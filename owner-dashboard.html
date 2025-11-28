@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Owner Dashboard — Wellrs Canteen</title>
+  <link rel="icon" href="img/favicon.png" />
+  <style>
+    :root{--bg:#0b1220;--card:#ffffff;--accent:#ff8800;--muted:#94a3b8}
+    *{box-sizing:border-box}
+    body{font-family:Inter,system-ui,Segoe UI,Arial;margin:0;background:linear-gradient(180deg,#071024 0%,#0f1724 100%);min-height:100vh;color:#e6eef8}
+    header{display:flex;align-items:center;justify-content:space-between;padding:18px 28px;background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.03)}
+    select option { color: #000; }
+    h1{font-size:18px;margin:0}
+    .wrap{display:flex;gap:20px;padding:20px;align-items:flex-start}
+    .col{background:rgba(255,255,255,.02);border-radius:10px;padding:14px;flex:1;min-width:280px}
+    .wide{flex:2}
+    .small{width:320px}
+    .btn{display:inline-block;padding:8px 12px;background:var(--accent);color:#000;border-radius:8px;border:none;cursor:pointer;font-weight:700}
+    .btn-ghost{background:none;border:1px solid rgba(255,255,255,.06);color:var(--muted);padding:8px 10px;border-radius:8px;cursor:pointer}
+    .muted{color:var(--muted);font-size:13px}
+    table{width:100%;border-collapse:collapse;color:#e9f2ff}
+    th,td{padding:10px;border-bottom:1px dashed rgba(255,255,255,.03);text-align:left;font-size:14px}
+    th{font-size:13px;color:var(--muted)}
+    .status{padding:6px 8px;border-radius:8px;font-weight:700;font-size:12px;display:inline-block}
+    .s-new{background:rgba(255,255,255,.04);color:#ffd88a}
+    .s-proc{background:rgba(255,255,255,.04);color:#8bd3ff}
+    .s-done{background:rgba(255,255,255,.04);color:#8dffb4}
+    .owner-list{max-height:220px;overflow:auto}
+    .form-row{display:flex;gap:8px;margin-bottom:8px}
+    input,select{padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.04);background:transparent;color:#fff}
+    .small-txt{font-size:13px;color:var(--muted)}
+    .center{text-align:center}
+    .danger{background:#ff4d4d;color:#fff;border:none;padding:6px 8px;border-radius:8px;cursor:pointer}
+    .controls{display:flex;gap:8px;flex-wrap:wrap}
+    .card-title{font-weight:700;margin-bottom:8px}
+    .top-stats{display:flex;gap:12px;margin-bottom:12px}
+    .stat{background:rgba(255,255,255,.02);padding:12px;border-radius:10px;flex:1}
+    .stat h3{margin:0;font-size:18px}
+    .stat p{margin:4px 0 0;color:var(--muted)}
+    .note{font-size:13px;color:var(--muted);margin-top:8px}
+    .order-items{font-size:13px;color:#dfecff}
+    .actions button{margin-right:6px}
+    footer{padding:14px 22px;color:var(--muted);font-size:13px;text-align:center}
+    .kbd{background:rgba(255,255,255,.03);padding:6px 8px;border-radius:6px;font-weight:700}
+    /* owner list rows */
+    .owner-row{display:flex;justify-content:space-between;padding:8px 6px;border-bottom:1px dashed rgba(255,255,255,.03)}
+    .owner-row .owner-name{font-weight:700}
+    .msg{font-size:13px;color:var(--muted);margin-top:8px}
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Owner Dashboard — Wellrs Canteen</h1>
+      <div class="muted">Signed in as: <span id="ownerName" class="kbd"></span></div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <button id="reloadBtn" class="btn-ghost">Refresh</button>
+      <button id="logoutBtn" class="btn">Logout</button>
+    </div>
+  </header>
+
+  <main class="wrap" id="mainWrap">
+    <!-- left: orders -->
+    <section class="col wide" aria-labelledby="ordersTitle">
+      <div class="card-title" id="ordersTitle">Pesanan Masuk & Riwayat</div>
+
+      <div class="top-stats">
+        <div class="stat">
+          <h3 id="totalCount">0</h3>
+          <p>Total Pesanan</p>
+        </div>
+        <div class="stat">
+          <h3 id="pendingCount">0</h3>
+          <p>Belum Diproses</p>
+        </div>
+        <div class="stat">
+          <h3 id="revenueToday">Rp 0</h3>
+          <p>Pendapatan (Semua)</p>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-bottom:10px;align-items:center">
+        <select id="filterStatus">
+          <option value="all">Semua status</option>
+          <option value="new">Baru</option>
+          <option value="processing">Diproses</option>
+          <option value="done">Selesai</option>
+        </select>
+        <input id="filterDate" type="date" />
+        <input id="searchOrder" placeholder="Cari ID atau nama..." style="flex:1" />
+        <button id="clearFilter" class="btn-ghost">Clear</button>
+      </div>
+
+      <div style="max-height:520px;overflow:auto">
+        <table id="ordersTable" role="table" aria-label="Daftar pesanan">
+          <thead>
+            <tr><th>ID</th><th>Pemesan</th><th>Item(s)</th><th>Catatan</th><th>Total</th><th>Waktu</th><th>Status</th><th>Actions</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="note">Klik <strong>Detail</strong> untuk melihat isi pesanan. Urutan terbaru di atas.</div>
+    </section>
+
+    <!-- right: owner management -->
+    <aside id="ownerSectionWrapper" class="col small" aria-labelledby="ownersTitle">
+      <div class="card-title" id="ownersTitle">Manajemen Owner</div>
+
+      <div style="margin-bottom:8px">
+        <div class="small-txt">Tambah owner baru</div>
+        <div class="form-row">
+          <input id="newOwnerUsername" type="text" placeholder="username" />
+          <input id="newOwnerPassword" type="password" placeholder="password" />
+        </div>
+        <div style="display:flex;gap:8px">
+          <button id="addOwner" class="btn">Tambah</button>
+          <button id="resetOwnersBtn" class="btn-ghost">Reset ke default</button>
+        </div>
+        <div id="ownerMsg" class="muted msg" style="margin-top:8px"></div>
+      </div>
+
+      <div style="margin-top:12px">
+        <div class="small-txt">Daftar owner</div>
+        <div class="owner-list" id="ownerList" style="margin-top:8px"></div>
+      </div>
+
+      <div style="margin-top:14px">
+        <div class="small-txt">Export / Import</div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button id="exportOrders" class="btn-ghost">Export Orders (JSON)</button>
+          <button id="importOrders" class="btn-ghost">Import Orders</button>
+        </div>
+        <input id="fileInput" type="file" accept="application/json" style="display:none" />
+      </div>
+    </aside>
+  </main>
+
+  <footer>
+    Wellrs Canteen — Owner Panel • All owners share same privileges • Data lokal di browser
+  </footer>
+
+  <!-- modal simple -->
+  <div id="modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);align-items:center;justify-content:center;z-index:9999">
+    <div style="background:#0b1530;color:#fff;padding:18px;border-radius:12px;max-width:760px;width:95%">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <strong id="modalTitle">Detail Pesanan</strong>
+        <button onclick="closeModal()" class="btn-ghost">Tutup</button>
+      </div>
+      <div id="modalBody" style="max-height:60vh;overflow:auto"></div>
+    </div>
+  </div>
+
+  <!-- include owner.js (data helpers) -->
+  <script src="js/owner.js"></script>
+
+  <!-- dashboard script (orders + owner UI glue) -->
+  <script>
+    // -------------------------
+    // Basic init & protection
+    // -------------------------
+    (function(){
+      const u = sessionStorage.getItem('ownerAuth');
+      if(!u) {
+        window.location.href = 'owner-login.html';
+        return;
+      }
+      document.getElementById('ownerName').textContent = u;
+
+      // only show owner management to stockwise
+      if(u !== "stockwise"){
+         const mgmt = document.getElementById("ownerSectionWrapper");
+         mgmt.style.display = "none";
+      }
+    })();
+
+    // -------------------------
+    // Orders UI (kept as-is)
+    // -------------------------
+    const ordersTableBody = document.querySelector('#ordersTable tbody');
+    const filterStatus = document.getElementById('filterStatus');
+    const filterDate = document.getElementById('filterDate');
+    const searchOrder = document.getElementById('searchOrder');
+    const clearFilter = document.getElementById('clearFilter');
+    const totalCountEl = document.getElementById('totalCount');
+    const pendingCountEl = document.getElementById('pendingCount');
+    const revenueTodayEl = document.getElementById('revenueToday');
+
+    document.getElementById('logoutBtn').addEventListener('click', ()=> {
+      sessionStorage.removeItem('ownerAuth');
+      window.location.href = 'owner-login.html';
+    });
+    document.getElementById('reloadBtn').addEventListener('click', ()=> renderOrders());
+
+    clearFilter.addEventListener('click', ()=>{ filterStatus.value='all'; filterDate.value=''; searchOrder.value=''; renderOrders(); });
+    filterStatus.addEventListener('change', renderOrders);
+    filterDate.addEventListener('change', renderOrders);
+    searchOrder.addEventListener('input', renderOrders);
+
+    document.getElementById('exportOrders').addEventListener('click', ()=> {
+      const orders = JSON.parse(localStorage.getItem('orders')||'[]');
+      const blob = new Blob([JSON.stringify(orders,null,2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download = 'orders.json'; a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('importOrders').addEventListener('click', ()=> {
+      document.getElementById('fileInput').click();
+    });
+    document.getElementById('fileInput').addEventListener('change', (e)=>{
+      const f = e.target.files[0];
+      if(!f) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(reader.result);
+          if(!Array.isArray(data)) throw new Error('Format salah');
+          localStorage.setItem('orders', JSON.stringify(data));
+          renderOrders();
+          alert('Import berhasil.');
+        } catch(err) {
+          alert('Import gagal: ' + err.message);
+        }
+      };
+      reader.readAsText(f);
+    });
+
+    // -------------------------
+    // Orders rendering (uses owner.js helpers)
+    // -------------------------
+    function statusClass(s){ if(!s) return 's-new'; if(s==='processing') return 's-proc'; if(s==='done') return 's-done'; return 's-new'; }
+    function escapeHtml(s){ return (s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+
+    window.showDetail = function(id){
+      const o = findOrder(id);
+      if(!o){ alert('Pesanan tidak ditemukan'); return; }
+      const body = document.getElementById('modalBody');
+      let html = `<div style="display:flex;gap:14px;align-items:flex-start"><div style="flex:1">`;
+      html += `<p><strong>ID:</strong> ${o.id}</p>`;
+      html += `<p><strong>Pemesan:</strong> ${escapeHtml(o.name)}</p>`;
+      html += `<p><strong>Kontak:</strong> ${escapeHtml(o.contact||'')}</p>`;
+      html += `<p><strong>Note:</strong> ${escapeHtml(o.note||'')}</p>`;
+      html += `<p><strong>Total:</strong> Rp ${(o.total||0).toLocaleString()}</p>`;
+      html += `<hr/></div><div style="min-width:220px"><strong>Items</strong><div style="margin-top:8px">`;
+      (o.items||[]).forEach(it=>{
+        html += `<div style="padding:8px;border-radius:8px;background:rgba(255,255,255,.02);margin-bottom:8px">
+          <div><strong>${escapeHtml(it.name)}</strong></div>
+          <div class="small-txt">Qty: ${it.qty} • Price: Rp ${(it.price||0).toLocaleString()}</div>
+        </div>`;
+      });
+      html += `</div></div></div>`;
+      body.innerHTML = html;
+      document.getElementById('modal').style.display = 'flex';
+    };
+
+    window.cycleStatus = function(id){
+      const o = findOrder(id);
+      if(!o) return alert('Pesanan tidak ditemukan');
+      const next = (o.status||'new') === 'new' ? 'processing' : (o.status==='processing' ? 'done' : 'done');
+      updateOrderStatus(id, next);
+      renderOrders();
+    };
+
+    window.deleteOrderConfirm = function(id){
+      if(!confirm('Hapus pesanan ini? Tindakan tidak bisa dibatalkan.')) return;
+      deleteOrder(id);
+      renderOrders();
+    };
+
+    function renderOrders(){
+      const orders = loadOrders(); // from owner.js
+      const status = filterStatus.value;
+      const dateVal = filterDate.value;
+      const q = searchOrder.value.trim().toLowerCase();
+
+      let list = orders.slice().sort((a,b)=> new Date(b.createdAt) - new Date(a.createdAt));
+      if(status !== 'all') list = list.filter(o => (o.status||'new') === status);
+      if(dateVal) list = list.filter(o => (o.createdAt||'').slice(0,10) === dateVal);
+      if(q) list = list.filter(o => (o.id||'').toLowerCase().includes(q) || (o.name||'').toLowerCase().includes(q));
+
+      ordersTableBody.innerHTML = '';
+      list.forEach(o=>{
+        const tr = document.createElement('tr');
+        const itemsText = (o.items || []).map(i=> `${i.name}×${i.qty}`).join(', ');
+        const created = new Date(o.createdAt).toLocaleString();
+        const total = (o.total||0).toLocaleString();
+
+        tr.innerHTML = `
+          <td>${o.id}</td>
+          <td>${escapeHtml(o.name)}</td>
+          <td class="order-items">${escapeHtml(itemsText)}</td>
+          <td>${escapeHtml(o.note || "-")}</td>   <!-- ⭐ Kolom catatan -->
+          <td>Rp ${total}</td>
+          <td>${created}</td>
+          <td><span class="status ${statusClass(o.status)}">${(o.status||'new').toUpperCase()}</span></td>
+          <td class="actions">
+            <button class="btn-ghost" onclick="showDetail('${o.id}')">Detail</button>
+            <button class="btn-ghost" onclick="cycleStatus('${o.id}')">Next</button>
+            <button class="danger" onclick="deleteOrderConfirm('${o.id}')">Hapus</button>
+          </td>
+        `;
+
+        ordersTableBody.appendChild(tr);
+      });
+
+      totalCountEl.textContent = orders.length;
+      pendingCountEl.textContent = orders.filter(o=> (o.status||'new')==='new').length;
+      revenueTodayEl.textContent = 'Rp ' + (orders.reduce((s,o)=> s + (o.total||0), 0)).toLocaleString();
+    }
+
+    // -------------------------
+    // OWNER UI / Glue (uses owner.js helpers)
+    // -------------------------
+    const ownerListNode = document.getElementById('ownerList');
+    const ownerMsg = document.getElementById('ownerMsg');
+
+    function renderOwnerListUI(){
+      const owners = loadOwners();
+      ownerListNode.innerHTML = '';
+      owners.forEach(o=>{
+        const div = document.createElement('div');
+        div.className = 'owner-row';
+        const name = document.createElement('div');
+        name.className = 'owner-name';
+        name.textContent = o.username;
+        const actions = document.createElement('div');
+
+        // only show delete for stockwise and not for stockwise user itself
+        const current = sessionStorage.getItem('ownerAuth');
+        if(current === 'stockwise' && o.username !== 'stockwise'){
+          const del = document.createElement('button');
+          del.className = 'btn-ghost';
+          del.textContent = 'Hapus';
+          del.onclick = ()=>{
+            if(!confirm(`Hapus owner "${o.username}" ?`)) return;
+            // use removeOwner from owner.js (it is named removeOwner in older versions)
+            if(typeof removeOwner === 'function'){
+              removeOwner(o.username);
+            } else if(typeof deleteOwner === 'function'){
+              deleteOwner(o.username);
+            }
+            renderOwnerListUI();
+            ownerMsg.textContent = 'Owner dihapus.';
+          };
+          actions.appendChild(del);
+        } else {
+          const placeholder = document.createElement('div');
+          placeholder.textContent = '';
+          actions.appendChild(placeholder);
+        }
+
+        div.appendChild(name);
+        div.appendChild(actions);
+        ownerListNode.appendChild(div);
+      });
+    }
+
+    // wire addOwner button -> uses addOwner(username,password) from owner.js
+    document.getElementById('addOwner').addEventListener('click', ()=>{
+      ownerMsg.textContent = '';
+      const u = document.getElementById('newOwnerUsername').value.trim();
+      const p = document.getElementById('newOwnerPassword').value.trim();
+      if(!u || !p){ ownerMsg.textContent = 'Isi username & password.'; return; }
+
+      // prefer addOwner function (owner.js). It returns true/false
+      let ok = false;
+      if(typeof addOwner === 'function'){
+        ok = addOwner(u,p);
+      } else {
+        // fallback (older code might have different name)
+        try {
+          addOwner(u,p);
+          ok = true;
+        } catch(e){ ok = false; }
+      }
+
+      if(!ok){ ownerMsg.textContent = 'Username sudah ada atau tidak punya akses.'; return; }
+      ownerMsg.textContent = 'Owner ditambahkan.';
+      document.getElementById('newOwnerUsername').value = '';
+      document.getElementById('newOwnerPassword').value = '';
+      renderOwnerListUI();
+    });
+
+    // reset owners
+    document.getElementById('resetOwnersBtn').addEventListener('click', ()=>{
+      if(!confirm('Reset owner ke default (akan menghapus semua owner kecuali default)?')) return;
+      if(typeof resetOwners === 'function'){
+        resetOwners();
+      } else {
+        // fallback: overwrite
+        localStorage.setItem('owners', JSON.stringify([{ username: "stockwise", password: "ferrari" }]));
+      }
+      renderOwnerListUI();
+      alert('Reset selesai. Default owner: stockwise / ferrari');
+    });
+
+    // initial render
+    renderOwnerListUI();
+    renderOrders();
+
+    // helpers
+    function closeModal(){ document.getElementById('modal').style.display='none'; document.getElementById('modalBody').innerHTML=''; }
+    window.closeModal = closeModal;
+    function findOrder(id){ const orders = loadOrders(); return orders.find(o=> o.id === id); }
+    window.findOrder = findOrder;
+
+  </script>
+</body>
+</html>

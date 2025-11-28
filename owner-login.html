@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Owner Login — Wellrs Canteen</title>
+  <style>
+    :root{--bg:#0f1724;--card:#ffffff;--accent:#ff8800}
+    *{box-sizing:border-box}
+    body{font-family:Inter,system-ui,Segoe UI,Arial;padding:0;margin:0;background:linear-gradient(180deg,#071024 0%,#0f1724 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;color:#fff}
+    .card{width:360px;background:#071830;border-radius:12px;padding:22px;box-shadow:0 10px 30px rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.04)}
+    h1{font-size:20px;margin-bottom:6px}
+    p{color:rgba(255,255,255,.7);margin-bottom:18px;font-size:13px}
+    label{display:block;font-size:13px;margin-bottom:6px;color:#dfe6f2}
+    input{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02);color:#fff;margin-bottom:12px}
+    button{width:100%;padding:10px;border-radius:8px;border:none;background:var(--accent);color:#000;font-weight:700;cursor:pointer}
+    .muted{font-size:12px;color:rgba(255,255,255,.6);text-align:center;margin-top:12px}
+    .error{color:#ffb4b4;background:rgba(255,0,0,.06);padding:8px;border-radius:6px;margin-bottom:8px;font-size:13px}
+    .hint{font-size:12px;color:rgba(255,255,255,.6);margin-top:8px}
+  </style>
+</head>
+<body>
+  <div class="card" role="main" aria-labelledby="title">
+    <h1 id="title">Owner Login — Wellrs Canteen</h1>
+    <p>Masuk untuk mengelola pesanan & owner. (Multi-owner support)</p>
+
+    <div id="err" class="error" style="display:none"></div>
+
+    <label for="ownerUsername">Username</label>
+    <input id="ownerUsername" autocomplete="username" />
+
+    <label for="ownerPassword">Password</label>
+    <input id="ownerPassword" type="password" autocomplete="current-password" />
+
+    <button id="btnLogin">Login</button>
+
+    <div class="muted">Hanya untuk pemilik Wellrs Canteen.</div>
+    <div class="hint">Note: sistem ini menyimpan data di browser (localStorage).</div>
+  </div>
+
+  <!-- path JS sudah benar -->
+  <script src="js/owner.js"></script>
+
+  <script>
+    // pastikan super owner ada
+    (function(){
+      try {
+        const ownersRaw = localStorage.getItem('owners');
+        if(!ownersRaw){
+          const initial = [{ username: 'stockwise', password: 'ferrari' }];
+          localStorage.setItem('owners', JSON.stringify(initial));
+        }
+      } catch(e) { console.warn(e); }
+    })();
+
+    // login handler — memanggil ownerLogin()
+    document.getElementById('btnLogin').addEventListener('click', () => {
+      const errEl = document.getElementById('err');
+      errEl.style.display = 'none';
+
+      const u = document.getElementById('ownerUsername').value.trim();
+      const p = document.getElementById('ownerPassword').value.trim();
+
+      if(!u || !p){
+        errEl.textContent = 'Masukkan username & password.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      // kirim ke fungsi ownerLogin() bawaan owner.js
+      ownerLogin();
+    });
+
+    // enter untuk login
+    ['ownerUsername','ownerPassword'].forEach(id=>{
+      document.getElementById(id).addEventListener('keypress',(e)=>{
+        if(e.key === 'Enter') document.getElementById('btnLogin').click();
+      });
+    });
+  </script>
+</body>
+</html>

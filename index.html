@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wellrs Canteen</title>
+
+  <!-- Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <!-- Feather Icons -->
+  <script src="https://unpkg.com/feather-icons"></script>
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- RemixIcon -->
+   <link href="https://cdn.jsdelivr.net/npm/remixicon/fonts/remixicon.css" rel="stylesheet">
+
+</head>
+
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <a href="#" class="navbar-logo">Wellrs<span>Canteen</span>.</a>
+
+    <div class="navbar-nav">
+      <a href="#home">Beranda</a>
+      <a href="#about">Tentang</a>
+      <a href="#menu">Menu</a>
+      <a href="#review">Ulasan</a>
+    </div>
+
+    <div class="navbar-extra">
+      <a href="#" id="search"><i data-feather="search"></i></a>
+      <a href="#" id="shopping-cart" class="cart-icon">
+        <i data-feather="shopping-cart"></i>
+        <span class="cart-badge" id="cartCount">0</span>
+      </a>
+      <a href="#" id="favoriteBtn" onclick="toggleFavorite()">
+       <i data-feather="heart"></i>
+       <span id="favoriteCount">0</span>
+      </a>
+      <a href="owner-login.html" class="owner-link">Owner</a>
+
+
+      <a href="#" id="hamburger-menu"><i data-feather="menu"></i></a>
+    </div>
+    
+    <div class="search-box" id="searchBox">
+      <input type="text" id="searchInput" placeholder="Cari makanan...">
+      <button id="clearSearch"><i class="ri-close-line"></i></button>
+      <button id="searchSubmit"><i class="ri-search-line"></i></button>
+    </div>
+  </nav>
+  
+  <div id="miniCart" class="mini-cart">
+    <div class="cart-header">
+      <h3>Keranjang</h3>
+      <button id="closeCart" class="close-cart">&times;</button>
+    </div>
+    
+    
+    <div id="cartItems" class="cart-items"></div>
+    
+    <div class="cart-footer">
+      <p>Total: <span id="cartTotal">Rp 0</span></p>
+      <button id="checkoutBtn" class="checkout-btn">Checkout</button>
+      <button id="viewStatusBtn" class="status-btn" onclick="openOrderStatus()" style="margin-top:10px;">Cek Status Pesanan</button>
+      <button id="viewActivityBtn" class="activity-btn" onclick="openPurchaseActivity()" style="margin-top:10px;">Log Aktivitas Pembelian</button>
+    </div>
+  </div>
+
+ 
+  <div id="miniFavorite" class="mini-favorite" aria-hidden="true">
+    <div class="mini-favorite-header">
+     <h3>Favorite</h3>
+     <button id="closeFavorite" class="close-favorite" aria-label="Tutup">×</button>
+    </div>
+
+    <div id="favoriteItems" class="mini-favorite-items"></div>
+  </div>
+
+
+
+  <!-- Hero Section Start -->
+  <section class="hero" id="home">
+    <main class="content">
+      <h1>Selamat Datang<br>Wellrs Canteen</h1>
+      <p>Masterpiece Kuliner Siap Disantap</p>
+      <a href="#menu" class="cta">Buy Now</a>
+    </main>
+  </section>
+  <!-- Hero Section End -->
+
+  <!-- About Section Start -->
+   <section id="about" class="about">
+    <h2>Tentang Kami</h2>
+    <div class="row">
+
+      <div class="about-image">
+        <img src="img/toko-warung.jpg">
+      </div>  
+
+     <div class="content"> 
+       <h3>Kenapa Toko Kami?</h3>
+       <p>Kantin SMK Negeri 6 Surakarta menawarkan menu lengkap, sehat, dan terjangkau di lingkungan yang bersih dan nyaman. Kami juga berinovasi untuk mengurangi penggunaan plastik demi menciptakan kantin yang ramah lingkungan.</p>
+     </div>
+    </div>
+
+    </div>
+   </section>
+  <!-- About Section End -->
+
+  <!-- Menu Section Start -->
+   <section id="menu" class="menu">
+         <h2>Menu Kami</h2>
+         <p id="emptyMsg" role="status" aria-live="polite">❌ Menu tidak ditemukan...</p>
+        
+     <div class="menu-container">
+             <div class="menu-card">
+                    
+        <div class="favorite">
+          <i data-feather="heart"></i>
+        </div>
+        
+        <img src="img/cireng.jpg" alt="Cireng">
+        <h3 class="menu-card-title">Cireng</h3>
+        <p class="menu-card-price">Rp 2.000</p>
+        
+        <div class="stars">
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+        </div>
+
+        <div class="menu-actions">
+          <button class="btn-cart"><i data-feather="shopping-cart"></i></button>
+          <button class="btn-buy">Buy Now</button>
+        </div>
+       </div>
+
+             <div class="menu-card">
+                    
+        <div class="favorite">
+          <i data-feather="heart"></i>
+        </div>
+        
+        <img src="img/seblak.jpg" alt="Seblak">
+        <h3 class="menu-card-title">Seblak</h3>
+        <p class="menu-card-price">Rp 6.000</p>
+        
+        <div class="stars">
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+        </div>
+
+        <div class="menu-actions">
+          <button class="btn-cart"><i data-feather="shopping-cart"></i></button>
+          <button class="btn-buy">Buy Now</button>
+        </div>
+
+       </div>
+
+             <div class="menu-card">
+                    
+        <div class="favorite">
+          <i data-feather="heart"></i>
+        </div>
+        
+        <img src="img/risol.jpg" alt="Cireng">
+        <h3 class="menu-card-title">Risol</h3>
+        <p class="menu-card-price">Rp 2.500</p>
+        
+        <div class="stars">
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+        </div>
+
+        <div class="menu-actions">
+          <button class="btn-cart"><i data-feather="shopping-cart"></i></button>
+          <button class="btn-buy">Buy Now</button>
+        </div>
+
+       </div>
+
+             <div class="menu-card">
+                    
+        <div class="favorite">
+          <i data-feather="heart"></i>
+        </div>
+        
+        <img src="img/mie ayam.jpg" alt="Cireng">
+        <h3 class="menu-card-title">Mie Ayam</h3>
+        <p class="menu-card-price">Rp 5.000</p>
+        
+        <div class="stars">
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+        </div>
+
+        <div class="menu-actions">
+          <button class="btn-cart"><i data-feather="shopping-cart"></i></button>
+          <button class="btn-buy">Buy Now</button>
+        </div>
+
+       </div>
+
+             <div class="menu-card">
+                    
+        <div class="favorite">
+          <i data-feather="heart"></i>
+        </div>
+        
+        <img src="img/gorengan.jpg" alt="Cireng">
+        <h3 class="menu-card-title">Gorengan</h3>
+        <p class="menu-card-price">Rp 2.000</p>
+        
+        <div class="stars">
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+        </div>
+
+        <div class="menu-actions">
+          <button class="btn-cart"><i data-feather="shopping-cart"></i></button>
+          <button class="btn-buy">Buy Now</button>
+        </div>
+
+       </div>
+
+             <div class="menu-card">
+                    
+        <div class="favorite">
+          <i data-feather="heart"></i>
+        </div>
+        
+        <img src="img/wonton.jpg" alt="Cireng">
+        <h3 class="menu-card-title">Wonton</h3>
+        <p class="menu-card-price">Rp 3.000</p>
+        
+        <div class="stars">
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+        </div>
+
+        <div class="menu-actions">
+          <button class="btn-cart"><i data-feather="shopping-cart"></i></button>
+          <button class="btn-buy">Buy Now</button>
+        </div>
+
+       </div>
+
+             <div class="menu-card">
+                    
+        <div class="favorite">
+          <i data-feather="heart"></i>
+        </div>
+        
+        <img src="img/mie instan.jpg" alt="Cireng">
+        <h3 class="menu-card-title">Mie Instan</h3>
+        <p class="menu-card-price">Rp 5.000</p>
+        
+        <div class="stars">
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+        </div>
+
+        <div class="menu-actions">
+          <button class="btn-cart"><i data-feather="shopping-cart"></i></button>
+          <button class="btn-buy">Buy Now</button>
+        </div>
+
+       </div>
+
+             <div class="menu-card">
+                    
+        <div class="favorite">
+          <i data-feather="heart"></i>
+        </div>
+        
+        <img src="img/pop mie.jpg" alt="Cireng">
+        <h3 class="menu-card-title">Pop Mie</h3>
+        <p class="menu-card-price">Rp 6.000</p>
+        
+        <div class="stars">
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+        </div>
+
+        <div class="menu-actions">
+          <button class="btn-cart"><i data-feather="shopping-cart"></i></button>
+          <button class="btn-buy">Buy Now</button>
+        </div>
+
+       </div>
+
+             <div class="menu-card">
+                    
+        <div class="favorite">
+          <i data-feather="heart"></i>
+        </div>
+        
+        <img src="img/soto.jpg" alt="Cireng">
+        <h3 class="menu-card-title">Soto</h3>
+        <p class="menu-card-price">Rp 6.000</p>
+        
+        <div class="stars">
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+        </div>
+
+        <div class="menu-actions">
+          <button class="btn-cart"><i data-feather="shopping-cart"></i></button>
+          <button class="btn-buy">Buy Now</button>
+        </div>
+
+       </div>
+
+             <div class="menu-card">
+                    
+        <div class="favorite">
+          <i data-feather="heart"></i>
+        </div>
+        
+        <img src="img/bakso.jpg" alt="Cireng">
+        <h3 class="menu-card-title">Bakso</h3>
+        <p class="menu-card-price">Rp 8.000</p>
+        
+        <div class="stars">
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+        </div>
+
+        <div class="menu-actions">
+          <button class="btn-cart"><i data-feather="shopping-cart"></i></button>
+          <button class="btn-buy">Buy Now</button>
+        </div>
+
+       </div>
+
+             <div class="menu-card">
+                    
+        <div class="favorite">
+          <i data-feather="heart"></i>
+        </div>
+        
+        <img src="img/nutrisari.jpg" alt="Cireng">
+        <h3 class="menu-card-title">Nutrisari</h3>
+        <p class="menu-card-price">Rp 4.000</p>
+        
+        <div class="stars">
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+        </div>
+
+        <div class="menu-actions">
+          <button class="btn-cart"><i data-feather="shopping-cart"></i></button>
+          <button class="btn-buy">Buy Now</button>
+        </div>
+
+       </div>
+
+             <div class="menu-card">
+                    
+        <div class="favorite">
+          <i data-feather="heart"></i>
+        </div>
+        
+        <img src="img/pop ice.jpg" alt="Cireng">
+        <h3 class="menu-card-title">Pop Ice</h3>
+        <p class="menu-card-price">Rp 4.000</p>
+        
+        <div class="stars">
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+        </div>
+
+        <div class="menu-actions">
+          <button class="btn-cart"><i data-feather="shopping-cart"></i></button>
+          <button class="btn-buy">Buy Now</button>
+        </div>
+
+       </div>
+
+             <div class="menu-card">
+                    
+        <div class="favorite">
+          <i data-feather="heart"></i>
+        </div>
+        
+        <img src="img/chocolatos.jpg" alt="Cireng">
+        <h3 class="menu-card-title">Chocolatos</h3>
+        <p class="menu-card-price">Rp 4.000</p>
+        
+        <div class="stars">
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+        </div>
+
+        <div class="menu-actions">
+          <button class="btn-cart"><i data-feather="shopping-cart"></i></button>
+          <button class="btn-buy">Buy Now</button>
+        </div>
+
+       </div>
+
+             <div class="menu-card">
+                    
+        <div class="favorite">
+          <i data-feather="heart"></i>
+        </div>
+        
+        <img src="img/milo.jpg" alt="Cireng">
+        <h3 class="menu-card-title">Milo</h3>
+        <p class="menu-card-price">Rp 4.000</p>
+        
+        <div class="stars">
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+        </div>
+
+        <div class="menu-actions">
+          <button class="btn-cart"><i data-feather="shopping-cart"></i></button>
+          <button class="btn-buy">Buy Now</button>
+        </div>
+
+       </div>
+
+             <div class="menu-card">
+                    
+        <div class="favorite">
+          <i data-feather="heart"></i>
+        </div>
+        
+        <img src="img/es teh.jpg" alt="Cireng">
+        <h3 class="menu-card-title">Teh</h3>
+        <p class="menu-card-price">Rp 3.000</p>
+        
+        <div class="stars">
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+        </div>
+
+        <div class="menu-actions">
+          <button class="btn-cart"><i data-feather="shopping-cart"></i></button>
+          <button class="btn-buy">Buy Now</button>
+        </div>
+
+       </div>
+
+             <div class="menu-card">
+                    
+        <div class="favorite">
+          <i data-feather="heart"></i>
+        </div>
+        
+        <img src="img/kopi.jpg" alt="Cireng">
+        <h3 class="menu-card-title">Kopi</h3>
+        <p class="menu-card-price">Rp 3.000</p>
+        
+        <div class="stars">
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+        </div>
+
+        <div class="menu-actions">
+          <button class="btn-cart"><i data-feather="shopping-cart"></i></button>
+          <button class="btn-buy">Buy Now</button>
+        </div>
+
+       </div>
+
+             <div class="menu-card">
+                    
+        <div class="favorite">
+          <i data-feather="heart"></i>
+        </div>
+        
+        <img src="img/teh tarik.jpg" alt="Cireng">
+        <h3 class="menu-card-title">Teh Tarik</h3>
+        <p class="menu-card-price">Rp 4.000</p>
+        
+        <div class="stars">
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+        </div>
+
+        <div class="menu-actions">
+          <button class="btn-cart"><i data-feather="shopping-cart"></i></button>
+          <button class="btn-buy">Buy Now</button>
+        </div>
+
+       </div>
+
+             <div class="menu-card">
+                    
+        <div class="favorite">
+          <i data-feather="heart"></i>
+        </div>
+        
+        <img src="img/Le minerale.jpg" alt="Cireng">
+        <h3 class="menu-card-title">Le Minerale</h3>
+        <p class="menu-card-price">Rp 3.000</p>
+        
+        <div class="stars">
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+        </div>
+
+        <div class="menu-actions">
+          <button class="btn-cart"><i data-feather="shopping-cart"></i></button>
+          <button class="btn-buy">Buy Now</button>
+        </div>
+
+       </div>
+             <div class="menu-card">
+                    
+        <div class="favorite">
+          <i data-feather="heart"></i>
+        </div>
+        
+        <img src="img/capcin.jpg" alt="Cireng">
+        <h3 class="menu-card-title">Capcin</h3>
+        <p class="menu-card-price">Rp 4.000</p>
+        
+        <div class="stars">
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+        </div>
+
+        <div class="menu-actions">
+          <button class="btn-cart"><i data-feather="shopping-cart"></i></button>
+          <button class="btn-buy">Buy Now</button>
+        </div>
+
+       </div>
+
+             <div class="menu-card">
+                    
+        <div class="favorite">
+          <i data-feather="heart"></i>
+        </div>
+        
+        <img src="img/TeaJus.jpg" alt="Cireng">
+        <h3 class="menu-card-title">TeaJus</h3>
+        <p class="menu-card-price">Rp 2.000</p>
+        
+        <div class="stars">
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+        </div>
+
+        <div class="menu-actions">
+          <button class="btn-cart"><i data-feather="shopping-cart"></i></button>
+          <button class="btn-buy">Buy Now</button>
+        </div>
+
+       </div>
+      </div>
+   </section>
+
+   <!-- ORDER / CHECKOUT -->
+  <section id="order" class="checkout-section">
+    <div class="checkout-card">
+    <h2>Detail Pesanan & Pembayaran</h2>
+
+    <!-- Order summary -->
+    <div id="orderSummary" class="order-summary">
+      <!-- Isi otomatis oleh JS -->
+      <p class="muted">Keranjang kosong. Tambahkan item dulu.</p>
+    </div>
+
+    <!-- Form pemesan -->
+    <form id="checkoutForm" class="checkout-form">
+      <label>
+        Nama Pemesan <span class="required">*</span>
+        <input type="text" id="custName" required />
+      </label>
+
+      <label>
+        Kelas/No.Hp
+        <input type="text" id="custContact" placeholder="Kelas / 0812xxxx" />
+      </label>
+
+      <label>
+        Catatan (opsional)
+        <textarea id="custNote" rows="2" placeholder="Contoh: pedas level 2"></textarea>
+      </label>
+
+      <fieldset class="payment-method">
+        <legend>Metode Pembayaran <span class="required">*</span></legend>
+
+        <!-- CASH -->
+        <label class="radio-row">
+         <input type="radio" name="payment" value="cash" id="cashMethod" required>
+         Cash
+        </label>
+
+        <!-- TRANSFER -->
+        <label class="radio-row">
+         <input type="radio" name="payment" value="transfer" id="transferMethod">
+         Transfer
+        </label>
+
+        <!-- Transfer Options -->
+        <div id="transferOptions" style="display: none; margin-left: 25px;">
+
+          <label class="radio-row">
+            <input type="radio" name="transfer-type" value="bank" id="bankMethod">
+            <span>Transfer Bank</span>
+          </label>
+
+          <label class="radio-row">
+           <input type="radio" name="transfer-type" value="ewallet" id="ewalletMethod">
+           <span>E-Wallet (Dana / OVO / Gopay)</span>
+          </label>
+
+          <!-- NAMA PENGIRIM (wajib saat transfer) -->
+          <label style="margin-top: 10px;">
+            Nama Pengirim <span class="required">*</span>
+            <input type="text" id="transferName" placeholder="Nama pada rekening / e-wallet">
+         </label>
+
+         <!-- DETAIL BANK -->
+         <div id="bankDetail" class="transfer-detail" style="display: none;">
+           <p><strong>Transfer ke:</strong></p>
+           <p>Bank Jago • 102791160121 • Owner Wellrs Canteen</p>
+          </div>
+
+          <!-- DETAIL EWALLET -->
+          <div id="ewalletDetail" class="transfer-detail" style="display: none;">
+            <p><strong>Transfer ke:</strong></p>
+            <p>Dana: 0857-4028-3052 • Owner Wellrs Canteen</p>
+          </div>
+        </div>
+      </fieldset>
+      <div class="checkout-actions">
+        <button type="button" id="confirmOrder" class="btn-primary">Konfirmasi & Bayar</button>
+        <button type="button" id="cancelOrder" class="btn-muted">Batal</button>
+      </div>
+    </form>
+   </div>
+
+    <!-- overlay konfirmasi -->
+    <div id="orderSuccess" class="order-success" style="display:none;">
+    <div class="order-success-card">
+      <h3>Pesanan Berhasil!</h3>
+      <p id="successMsg">Terima kasih — pesananmu telah diterima.</p>
+      <p id="etaText"></p>
+      <button id="closeSuccess" class="btn-primary">Tutup</button>
+    </div>
+    </div>
+  </section>
+
+  <!-- Menu Section End -->
+
+  <!-- Review Section start -->
+   <section id="review" class="review">
+    <h2>Ulasan Pelanggan</h2>
+
+    <div class="review-container">
+
+      <div class="review-card">
+        <img src="img/mingmine.jpg" alt="Marvel">
+
+        <div class="review-text">
+        <h3 class="name">Marvel</h3>
+
+        <div class="review-stars">
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+        </div>
+
+        <div class="review-social">
+          <a href="https://instagram.com/min9yu_k" target="_blank">
+            <i class="ri-instagram-line"></i>
+          </a>
+          <a href="#"><i class="ri-facebook-fill"></i></a>
+          <a href="https://wa.me/6289666097711" target="_blank">
+            <i class="ri-whatsapp-line"></i>
+          </a>
+          <a href="#"><i class="ri-twitter-fill"></i></a>
+        </div>
+        <p>Pelayanannya super cepat, cocok banget buat jam makan siang yang singkat. Tidak perlu antre lama.!</p>
+      </div>
+      </div>
+
+      <div class="review-card">
+        <img src="img/arla.jpg" alt="Hakim">
+
+        <div class="review-text">
+        <h3 class="name">Hakim</h3>
+
+        <div class="review-stars">
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+        </div>
+
+        <div class="review-social">
+          <a href="https://instagram.com/andryhakim" target="_blank">
+            <i class="ri-instagram-line"></i>
+          </a>
+          <a href="#"><i class="ri-facebook-fill"></i></a>
+          <a href="https://wa.me/6285640786549" target="_blank">
+            <i class="ri-whatsapp-line"></i>
+          </a>
+          <a href="#"><i class="ri-twitter-fill"></i></a>
+        </div>
+        <p>Website ini benar-benar penyelamat! Antrean panjang kini tinggal kenangan. Sistemnya rapi dan sangat membantu. Highly recommended!</p>
+      </div>
+      </div>
+      <div class="review-card">
+        <img src="img/oscar.jpg" alt="Oscar">
+
+        <div class="review-text">
+        <h3 class="name">Oscar</h3>
+
+        <div class="review-stars">
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+        </div>
+
+        <div class="review-social">
+          <a href="https://instagram.com/eunwo.o_c" target="_blank">
+            <i class="ri-instagram-line"></i>
+          </a>
+          <a href="#"><i class="ri-facebook-fill"></i></a>
+          <a href="https://wa.me/6281392311437" target="_blank">
+            <i class="ri-whatsapp-line"></i>
+          </a>
+          <a href="#"><i class="ri-twitter-fill"></i></a>
+        </div>
+        <p>Sistem antrean web sangat efisien. ambil makanan saat notif siap, anti buang waktu. Menu lengkap dan murah. Pembayaran fleksibel: cash atau cashless.</p>
+      </div>
+      </div>
+      <div class="review-card">
+        <img src="img/ale.jpg" alt="axelle">
+
+        <div class="review-text">
+        <h3 class="name">Axelle</h3>
+
+        <div class="review-stars">
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+          <i data-feather="star"></i>
+        </div>
+
+        <div class="review-social">
+          <a href="https://instagram.com/alejandromarianoo" target="_blank">
+            <i class="ri-instagram-line"></i>
+          </a>
+          <a href="#"><i class="ri-facebook-fill"></i></a>
+          <a href="https://wa.me/6288221731175" target="_blank">
+            <i class="ri-whatsapp-line"></i>
+          </a>
+          <a href="#"><i class="ri-twitter-fill"></i></a>
+        </div>
+        <p>makanan dan minumannya enak, murah, sistem web yang simple dan terdapat fitur notes dalam pembelian pesanan yang membantu memudahkan spesifikasi pesanan.</p>
+      </div>
+      </div>
+    </div>
+   </section>
+  <!-- Review Section end -->
+
+  <!-- Order Section start -->
+   <section id="orderNow"class="order">
+     <div class="order-container"> 
+       <div class="order-image">
+        <img src="img/order.jpg" alt="order">
+       </div>
+        
+       <div class="content">
+         <h2>Pesan Sekarang</h2>
+         <form class="order-form">
+           <div class="input-box">
+             <div class="input-field">
+               <label>Nama</label>
+               <input type="text" placeholder="Masukkan nama Anda" required>
+             </div>
+             <div class="input-field">
+               <label>Catatan</label>
+               <input type="text" placeholder="Masukkan Catatan Anda" required>
+             </div>
+           </div>
+   
+           <div class="input-box">
+             <div class="input-field">
+               <label>Nomor Telepon</label>
+               <input type="text" placeholder="Masukkan nomor Anda" required>
+             </div>
+             <div class="input-field">
+               <label>Jumlah pesanan</label>
+               <input type="text" placeholder="Berapa banyak pesanan?">
+             </div>
+           </div>
+   
+           <div class="input-box">
+             <div class="input-field">
+               <label>Pesanan</label>
+               <input type="text" placeholder="Masukkan Pesanan Anda" required>
+             </div>
+             <div class="input-field">
+               <label>Kelas</label>
+               <input type="text" placeholder="Masukkan Kelas Anda" required>
+             </div>
+           </div>
+   
+           <button type="submit" class="btn-order">Kirim Sekarang</button>
+         </form>
+       </div> 
+    </div>
+
+   </section>
+  <!-- Order Section end -->
+
+  <!-- Footer -->
+   <footer class="footer">
+  <div class="footer-container">
+
+    <div class="footer-box">
+      <div class="footer-map-box">
+        <h3><i data-feather="map-pin"></i>Lokasi Kami</h3>
+      </div>
+      
+      <div class="footer-map">
+        <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3955.1994956051635!2d110.79663727500267!3d-7.5532133924604885!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e7a14248f7a300b%3A0x8147b47e94da5fa2!2sSMK%20Negeri%206%20Surakarta!5e0!3m2!1sid!2sid!4v1764124358569!5m2!1sid!2sid" 
+         width="600" 
+         height="450" 
+         style="border:0;" 
+         allowfullscreen="" 
+         loading="lazy" 
+         referrerpolicy="no-referrer-when-downgrade">
+        </iframe>
+      </div>
+    </div>
+
+    <div class="footer-box">
+      <h3>Tautan Cepat</h3>
+      <a href="#home">Beranda</a>
+      <a href="#about">Tentang</a>
+      <a href="#menu">Menu</a>
+      <a href="#review">Ulasan</a>
+    </div>
+
+    <div class="footer-box">
+      <h3><i data-feather="phone"></i> Kontak</h3>
+      <a href="https://wa.me/6288221731175" target="_blank">+62 882 2173 1175</a>
+      <a href="https://wa.me/6285640786549" target="_blank">+62 856 4078 6549</a>
+      <a href="mailto:ndaanur54@gmail.com">ndaanur54@gmail.com</a>
+      <a href="mailto:kantinsmk6@gmail.com">kantinsmk6@gmail.com</a>
+    </div>
+
+    <div class="footer-services">
+      <h3>Layanan Kami</h3>
+
+      <div class="service-item">
+       <i class="ri-flashlight-line"></i>
+       <span>Pemesanan Cepat</span>
+      </div>
+
+      <div class="service-item">
+        <i class="ri-wallet-3-line"></i>
+        <span>Pembayaran Mudah</span>
+      </div>
+
+      <div class="service-item">
+       <i class="ri-time-line"></i>
+       <span>Operasional 9 Jam</span>
+      </div>
+
+      <div class="service-item">
+       <i class="ri-restaurant-line"></i>
+       <span>Makanan Selalu Fresh</span>
+     </div>
+
+      <div class="service-item">
+        <i class="ri-cake-3-line"></i>
+        <span>Banyak Pilihan Menu</span>
+      </div>
+    </div>
+
+    <div class="footer-box">
+      <h3>Ikuti Kami</h3>
+      <div class="social">
+        <a href="#"><i data-feather="facebook"></i></a>
+        <a href="#"><i data-feather="twitter"></i></a>
+        <a href="https://instagram.com/well_funtastic" target="_blank">
+         <i class="ri-instagram-line"></i>
+        </a>
+        <a href="#"><i data-feather="linkedin"></i></a>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-credit">
+    <p>© | 2025 Kantin SMK Negeri 6 Surakarta</p>
+    <p>Website didesain dengan ❤️ oleh Wellrs Canteen</p>
+  </div>
+    </footer>
+    
+
+  <!-- Popup Estimasi Pesanan -->
+  <div id="orderStatusOverlay" class="order-status-overlay">
+    <div class="order-status-box">
+    
+     <div class="os-icon">👨‍🍳</div>
+
+      <h2>Pesanan Sedang Diproses</h2>
+      <p id="os-estimasi" class="os-estimasi">Estimasi selesai: 12 menit</p>
+
+      <div class="os-progress">
+        <div id="os-progress-bar" class="os-progress-bar"></div>
+      </div>
+
+      <p id="os-status-text" class="os-status-text">Status: Diterima</p>
+
+      <button id="os-close" class="os-btn-close">Tutup</button>
+    </div>
+  </div>
+
+  <div id="activityOverlay" class="order-status-overlay" style="display:none;">
+    <div class="order-status-box">
+
+      <h3>Log Aktivitas Pembelian</h3>
+      <p style="font-size:13px; opacity:0.7;">Riwayat semua pesanan di device ini</p>
+
+      <div id="activityList" style="margin-top:15px; max-height:300px; overflow-y:auto;">
+      </div>
+
+      <button id="act-close" class="btn-muted" style="margin-top:15px;">Tutup</button>
+    </div>
+  </div>
+
+  <div id="statusOverlay" class="overlay hidden">
+    <div class="overlay-box">
+      <h2>Status Pesanan</h2>
+      <p id="statusMessage">Memuat...</p>
+      <button class="close-btn" onclick="closeStatusOverlay()">Tutup</button>
+    </div>
+  </div>
+
+  <div id="historyOverlay" class="overlay hidden">
+    <div class="overlay-box">
+      <h2>Log Aktivitas Pembelian</h2>
+      <div id="historyList" class="history-scroll"></div>
+      <button class="close-btn" onclick="closeHistoryOverlay()">Tutup</button>
+    </div>
+  </div>
+
+  <!-- JS -->
+  <script src="js/script.js"></script>
+  <script>
+  feather.replace();
+  </script>
+</body>
+</html>
