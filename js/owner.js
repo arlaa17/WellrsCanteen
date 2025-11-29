@@ -1,3 +1,67 @@
+// ============== RTDB SHIM AGAR OWNER.JS SELALU BISA JALAN ==============
+// Kalau Firebase compat sudah ada → pakai itu
+if (window.firebase && firebase.database) {
+    window.rtdb = firebase.database();
+    console.warn("RTDB: Using Firebase compat database()");
+}
+
+// Kalau tidak ada compat tetapi ada firebase modular (window.fb)
+if (!window.rtdb && window.fb) {
+    console.warn("RTDB SHIM: Mapping window.fb -> window.rtdb");
+
+    window.rtdb = {
+        ref(path) {
+            return {
+                async get() {
+                    const result = await window.fb.get(path);
+                    return {
+                        exists: () => result !== null && result !== undefined,
+                        val: () => result
+                    };
+                },
+                on(event, callback) {
+                    if (event !== "value") return;
+                    window.fb.onValue(path, (snap) => {
+                        callback({
+                            exists: () => snap !== null && snap !== undefined,
+                            val: () => snap
+                        });
+                    });
+                },
+                push() {
+                    const key = "k" + Date.now();
+                    return {
+                        key,
+                        set: (value) => window.fb.set(path + "/" + key, value)
+                    };
+                },
+                remove() {
+                    return window.fb.remove(path);
+                }
+            };
+        }
+    };
+}
+
+// fallback terakhir: supaya owner-login TIDAK error
+if (!window.rtdb) {
+    console.warn("RTDB fallback: using local fake DB (localStorage only)");
+
+    window.rtdb = {
+        ref(path) {
+            return {
+                async get() {
+                    const raw = localStorage.getItem(path);
+                    return {
+                        exists: () => raw !== null,
+                        val: () => JSON.parse(raw)
+                    };
+                }
+            };
+        }
+    };
+}
+
 // --- Firebase compat shim (paste di TOP of js/owner.js) ---
 // If modular helper (window.fb) exists, expose a small compat-style window.rtdb wrapper
 if (!window.rtdb && window.fb && typeof window.fb.get === 'function') {
