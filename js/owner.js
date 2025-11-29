@@ -1,5 +1,57 @@
-// js/owner.js
-// Owner system — works with Firebase RTDB (compat) if available; otherwise falls back to localStorage.
+// --- Firebase compat shim (paste di TOP of js/owner.js) ---
+// If modular helper (window.fb) exists, expose a small compat-style window.rtdb wrapper
+if (!window.rtdb && window.fb && typeof window.fb.get === 'function') {
+  console.info('RTDB shim: mapping window.fb -> window.rtdb (compat shim)');
+  window.rtdb = (function(fb){
+    // small wrapper: returns objects with .get() and .on() similar to compat snapshot usage
+    function ref(path) {
+      return {
+        // owner.js often calls .get() on ref
+        get: async () => {
+          try {
+            const snap = await fb.get(path);
+            // normalize shape: return object with exists() & val()
+            return {
+              exists: () => (snap !== null && typeof snap !== 'undefined'),
+              val: () => (snap && snap.val ? snap.val() : snap)
+            };
+          } catch(e) { throw e; }
+        },
+        // on(event, cb) used in other places (onValue)
+        on: (event, cb) => {
+          // fb.onValue expects path and callback(snapshot)
+          if (typeof fb.onValue === 'function') {
+            return fb.onValue(path, (snap) => {
+              try {
+                cb({
+                  exists: () => (snap !== null && typeof snap !== 'undefined'),
+                  val: () => (snap && snap.val ? snap.val() : snap)
+                });
+              } catch(e){ console.warn('shim on callback err', e); }
+            });
+          } else {
+            console.warn('shim on: fb.onValue not available');
+            return null;
+          }
+        },
+        // simple push() emulation for addOwner (returns pseudo-ref with .set)
+        push: () => {
+          const key = 'k' + Date.now() + Math.floor(Math.random()*1000);
+          const basePath = path.replace(/\/+$/,'');
+          return {
+            key,
+            set: async (val) => fb.set(`${basePath}/${key}`, val)
+          };
+        },
+        // remove helper (used somewhere)
+        remove: async () => {
+          try { return await fb.remove(path); } catch(e){ throw e; }
+        }
+      };
+    }
+    return { ref };
+  })(window.fb);
+}
 
 // helper: apakah RTDB ready?
 function isRTDBReady() {

@@ -1033,11 +1033,12 @@
       appId: "1:414987689956:web:3063be71602cda0d1cf1f1"
     };
     firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
     // expose DB
     window.rtdb = firebase.database();
   </script>
-  
+
   <!-- JS -->
   <script src="js/owner.js"></script>
   <script src="js/script.js"></script>
