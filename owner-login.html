@@ -35,14 +35,44 @@
     <button id="btnLogin">Login</button>
 
     <div class="muted">Hanya untuk pemilik Wellrs Canteen.</div>
-    <div class="hint">Note: sistem ini menyimpan data di browser (localStorage).</div>
+    <div class="hint">Note: sistem ini menyimpan data di browser (localStorage) atau Firebase (jika diaktifkan).</div>
   </div>
 
-  <!-- path JS sudah benar -->
+  <!-- ===== FIREBASE CDN (compat) - MUST LOAD BEFORE owner.js ===== -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <!-- (optional) auth/firestore if you later need them -->
+  <!-- <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script> -->
+  <!-- <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script> -->
+
+  <script>
+    // ====== GANTI KONFIGURASI DENGAN MILIKMU (mime dari firebase.js sebelumnya) ======
+    const firebaseConfig = {
+      apiKey: "AIzaSyCm2AkoWA-rSTi7j0-A0EARxKBX6n9_1H0",
+      authDomain: "wellrs-canteen.firebaseapp.com",
+      databaseURL: "https://wellrs-canteen-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "wellrs-canteen",
+      storageBucket: "wellrs-canteen.appspot.com",
+      messagingSenderId: "414987689956",
+      appId: "1:414987689956:web:3063be71602cda0d1cf1f1"
+    };
+
+    // init firebase
+    try {
+      firebase.initializeApp(firebaseConfig);
+      // expose rtdb helper for owner.js (owner.js will check window.rtdb)
+      window.rtdb = firebase.database();
+      console.info("Firebase initialized (compat).");
+    } catch (e) {
+      console.warn("Firebase init failed:", e);
+    }
+  </script>
+
+  <!-- include owner.js (harus setelah Firebase init) -->
   <script src="js/owner.js"></script>
 
   <script>
-    // pastikan super owner ada
+    // pastikan super owner ada di localStorage fallback (jika Firebase tidak terpakai)
     (function(){
       try {
         const ownersRaw = localStorage.getItem('owners');
@@ -67,7 +97,7 @@
         return;
       }
 
-      // kirim ke fungsi ownerLogin() bawaan owner.js
+      // ownerLogin() berasal dari js/owner.js (dijalankan setelah Firebase)
       ownerLogin();
     });
 

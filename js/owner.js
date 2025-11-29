@@ -1,233 +1,304 @@
-// ==========================
-// OWNER.JS — FIXED & STABLE
-// ==========================
-// Versi lengkap, aman, tanpa menghapus fitur bawaan kamu
-// Firebase menggunakan window.fb (dari firebase.js)
-// Semua error infinite loop, stack overflow, dan undefined firebase diperbaiki
+// js/owner.js
+// Owner system — works with Firebase RTDB (compat) if available; otherwise falls back to localStorage.
 
-
-// =======================================================
-// 1. SAFE CHECK — memastikan Firebase siap sebelum dipakai
-// =======================================================
-function isFirebaseAvailable() {
-    return !!(window.fb && window.fb.db);
+// helper: apakah RTDB ready?
+function isRTDBReady() {
+  return !!(window && window.rtdb && typeof window.rtdb.ref === 'function');
 }
 
-
-// =======================================================
-// 2. Tunggu Firebase siap (hindari error saat page load)
-// =======================================================
-async function waitForFirebase() {
-    let attempts = 0;
-    while (!isFirebaseAvailable()) {
-        await new Promise((res) => setTimeout(res, 150));
-        attempts++;
-        if (attempts > 40) {
-            console.error("ERROR: Firebase tidak siap setelah 6 detik");
-            throw new Error("Firebase gagal load");
-        }
-    }
+// small wait util (used on page load)
+function waitForRTDB(timeoutMs = 6000) {
+  return new Promise((resolve, reject) => {
+    const start = Date.now();
+    (function check(){
+      if (isRTDBReady()) return resolve(true);
+      if (Date.now() - start > timeoutMs) return reject(new Error('RTDB not ready'));
+      setTimeout(check, 150);
+    })();
+  });
 }
 
+// ----------------- OWNER helpers (DB or local) -----------------
 
-// =======================================================
-// 3. Ketika halaman siap → tunggu Firebase → jalankan sistem
-// =======================================================
-document.addEventListener("DOMContentLoaded", async () => {
-    try {
-        await waitForFirebase();
-        console.log("Firebase siap untuk OWNER");
-
-        initOwnerSystem();
-    } catch (err) {
-        console.error("Owner system gagal dijalankan:", err);
-    }
-});
-
-
-// =======================================================
-// 4. Init sistem owner
-// =======================================================
-function initOwnerSystem() {
-    loadOwners();       // ambil daftar owner
-    loadOrdersRealtime(); // realtime pesanan
+// Read owners (returns object or array depending on storage)
+async function fetchOwnersRemote() {
+  const snap = await window.rtdb.ref('owners').get();
+  const val = snap.exists() ? snap.val() : null;
+  // firebase RTDB structure likely { id1: {username, password}, id2: ... }
+  if (!val) return {};
+  return val;
+}
+function fetchOwnersLocal() {
+  const raw = localStorage.getItem('owners');
+  return raw ? JSON.parse(raw) : [{ username: 'stockwise', password: 'ferrari' }];
 }
 
-
-// =======================================================
-// 5. Ambil daftar owner dari Firebase
-// =======================================================
 async function loadOwners() {
-    const db = window.fb.db;
-    const ownersRef = window.fb.ref(db, "owners");
-
-    const snapshot = await window.fb.get(ownersRef);
-    const data = snapshot.val() || {};
-
-    renderOwnerList(data);
-    return data;
+  if (isRTDBReady()) {
+    try {
+      const o = await fetchOwnersRemote();
+      return o || {};
+    } catch (e) {
+      console.warn('fetchOwnersRemote failed, using local', e);
+      return arrayToObj(fetchOwnersLocal());
+    }
+  } else {
+    const local = fetchOwnersLocal();
+    // convert array -> keyed object for consistency
+    return arrayToObj(local);
+  }
 }
 
-
-// =======================================================
-// 6. Render daftar owner ke tabel
-// =======================================================
-function renderOwnerList(owners) {
-    const table = document.getElementById("ownerTable");
-    if (!table) return;
-
-    table.innerHTML = "";
-
-    Object.keys(owners).forEach((ownerId) => {
-        const item = owners[ownerId];
-
-        const row = document.createElement("tr");
-        row.innerHTML = `
-            <td>${item.username}</td>
-            <td>${item.password}</td>
-            <td><button class="delete-btn" onclick="deleteOwner('${ownerId}')">Hapus</button></td>
-        `;
-        table.appendChild(row);
-    });
+function saveOwnersLocalArray(arr) {
+  localStorage.setItem('owners', JSON.stringify(arr));
 }
 
+function arrayToObj(arr) {
+  // arr might be array of {username,password} OR object already
+  if (!arr) return {};
+  if (Array.isArray(arr)) {
+    const out = {};
+    arr.forEach((o, i) => { out['local_' + i] = o; });
+    return out;
+  }
+  return arr; // already object
+}
 
-// =======================================================
-// 7. Tambah owner baru
-// =======================================================
-async function addOwner() {
-    const username = document.getElementById("newOwnerUsername").value.trim();
-    const password = document.getElementById("newOwnerPassword").value.trim();
-    const msg = document.getElementById("ownerMsg");
+// add owner (returns true/false)
+async function addOwner(username, password) {
+  username = String(username).trim();
+  password = String(password).trim();
+  if (!username || !password) return false;
 
-    if (!username || !password) {
-        msg.textContent = "Isi semua data!";
-        msg.style.color = "red";
+  // if remote available, push new key
+  if (isRTDBReady()) {
+    // only allow if current session is authorized? (you can add server-side check later)
+    try {
+      // check duplicates
+      const ownersObj = await loadOwners();
+      const exists = Object.values(ownersObj).some(o=>o.username === username);
+      if (exists) return false;
+      const newRef = window.rtdb.ref('owners').push();
+      await newRef.set({ username, password });
+      return true;
+    } catch (e) {
+      console.warn('addOwner remote failed', e);
+      return false;
+    }
+  } else {
+    // local fallback
+    try {
+      let arr = fetchOwnersLocal();
+      if (!Array.isArray(arr)) arr = Object.values(arr);
+      if (arr.some(o => o.username === username)) return false;
+      arr.push({ username, password });
+      saveOwnersLocalArray(arr);
+      return true;
+    } catch (e) {
+      console.warn('addOwner local failed', e);
+      return false;
+    }
+  }
+}
+
+// delete owner by username (keep stockwise)
+async function deleteOwner(username) {
+  username = String(username);
+  if (username === 'stockwise') { alert('Owner utama tidak dapat dihapus.'); return false; }
+
+  if (isRTDBReady()) {
+    try {
+      const ownersObj = await loadOwners();
+      const foundKey = Object.keys(ownersObj).find(k => ownersObj[k].username === username);
+      if (!foundKey) return false;
+      await window.rtdb.ref('owners/' + foundKey).remove();
+      return true;
+    } catch (e) {
+      console.warn('deleteOwner remote failed', e);
+      return false;
+    }
+  } else {
+    // local fallback
+    let arr = fetchOwnersLocal();
+    if (!Array.isArray(arr)) arr = Object.values(arr);
+    arr = arr.filter(o => o.username !== username);
+    saveOwnersLocalArray(arr);
+    return true;
+  }
+}
+
+// ----------------- LOGIN -----------------
+async function ownerLogin() {
+  const username = document.getElementById("ownerUsername").value.trim();
+  const password = document.getElementById("ownerPassword").value.trim();
+  const msgEl = document.getElementById("err") || document.getElementById("ownerLoginMsg");
+
+  try {
+    // try remote first (if ready)
+    if (isRTDBReady()) {
+      // load owners object (keys -> {username,password})
+      const ownersObj = await loadOwners();
+      const match = Object.values(ownersObj).find(o => o.username === username && o.password === password);
+      if (!match) {
+        if (msgEl) { msgEl.style.display = 'block'; msgEl.textContent = 'Username atau password salah!'; }
         return;
+      }
+    } else {
+      // fallback local
+      const arr = fetchOwnersLocal();
+      const found = (Array.isArray(arr) ? arr : Object.values(arr)).find(o => o.username === username && o.password === password);
+      if (!found) {
+        if (msgEl) { msgEl.style.display = 'block'; msgEl.textContent = 'Username atau password salah!'; }
+        return;
+      }
     }
 
-    const db = window.fb.db;
-    const ownersRef = window.fb.ref(db, "owners");
-
-    await window.fb.push(ownersRef, { username, password });
-
-    msg.textContent = "Owner berhasil ditambahkan!";
-    msg.style.color = "green";
-
-    document.getElementById("newOwnerUsername").value = "";
-    document.getElementById("newOwnerPassword").value = "";
-
-    loadOwners();
+    // success
+    sessionStorage.setItem('ownerAuth', username);
+    // redirect to dashboard
+    window.location.href = 'owner-dashboard.html';
+  } catch (e) {
+    console.error('Login error:', e);
+    if (msgEl) { msgEl.style.display = 'block'; msgEl.textContent = 'Terjadi kesalahan saat login.'; }
+  }
 }
 
+// expose functions to global scope (owner-dashboard.html uses them)
+window.addOwner = addOwner;
+window.deleteOwner = deleteOwner;
+window.ownerLogin = ownerLogin;
+window.loadOwners = loadOwners;
 
-// =======================================================
-// 8. Hapus owner
-// =======================================================
-async function deleteOwner(id) {
-    const db = window.fb.db;
-    const refPath = window.fb.ref(db, `owners/${id}`);
-
-    await window.fb.remove(refPath);
-    loadOwners();
+// ----------------- ORDERS (basic realtime render) -----------------
+function loadOrdersRealtime() {
+  // If RTDB available, attach onValue to 'orders' node
+  if (isRTDBReady()) {
+    window.rtdb.ref('orders').on('value', snapshot => {
+      const data = snapshot.exists() ? snapshot.val() : {};
+      renderOrders(data);
+    });
+  } else {
+    // fallback: render from localStorage orders array
+    const arr = JSON.parse(localStorage.getItem('orders') || '[]');
+    // convert array -> keyed object style expected by renderOrders below
+    const keyed = {};
+    arr.forEach((o, i)=> keyed[o.id || 'local_' + i] = o);
+    renderOrders(keyed);
+  }
 }
 
+// renderOrders expects orders object {id: {name,total,...}}
+function renderOrders(ordersObj) {
+  // try to find table body by common ids used in owner-dashboard
+  const tableBody = document.querySelector('#ordersTable tbody') || document.getElementById('ordersTable') || document.getElementById('orderTableBody') || document.querySelector('table tbody');
+  if (!tableBody) return;
 
-// =======================================================
-// 9. LOGIN OWNER
-// =======================================================
-async function ownerLogin() {
-    const username = document.getElementById("ownerUsername").value.trim();
-    const password = document.getElementById("ownerPassword").value.trim();
-    const msg = document.getElementById("ownerLoginMsg");
+  // ensure it's tbody element
+  let tbody = tableBody;
+  if (tableBody.tagName.toLowerCase() === 'table') {
+    tbody = tableBody.querySelector('tbody') || document.createElement('tbody');
+  }
 
-    try {
-        await waitForFirebase();
-        const owners = await loadOwners();
+  tbody.innerHTML = '';
 
-        let valid = false;
-        Object.values(owners).forEach((o) => {
-            if (o.username === username && o.password === password) {
-                valid = true;
-            }
-        });
+  const keys = Object.keys(ordersObj || {});
+  // show newest first if possible
+  keys.sort().reverse();
 
-        if (!valid) {
-            msg.textContent = "Username atau password salah!";
-            msg.style.color = "red";
-            return;
+  keys.forEach(k => {
+    const o = ordersObj[k];
+    const tr = document.createElement('tr');
+
+    // try to safely access fields
+    const idVal = o.id || k;
+    const name = o.name || o.custName || '-';
+    const items = (o.items && Array.isArray(o.items)) ? o.items.map(i => `${i.name} × ${i.qty}`).join('<br>') : (o.items || '-');
+    const note = o.note || o.catatan || '-';
+    const total = typeof o.total === 'number' ? 'Rp ' + o.total.toLocaleString() : (o.total || '-');
+    const time = o.createdAt ? new Date(o.createdAt).toLocaleString() : '-';
+    const status = o.status || o.state || 'new';
+
+    tr.innerHTML = `
+      <td>${idVal}</td>
+      <td>${name}</td>
+      <td>${items}</td>
+      <td>${note}</td>
+      <td>${total}</td>
+      <td>${time}</td>
+      <td>${status}</td>
+      <td>
+        <button class="btn-ghost" onclick="viewOrder(${JSON.stringify(o)})">Detail</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // if tableBody was the table, attach tbody
+  if (tableBody.tagName.toLowerCase() === 'table') {
+    if (!tableBody.querySelector('tbody')) tableBody.appendChild(tbody);
+  }
+}
+window.loadOrdersRealtime = loadOrdersRealtime;
+window.renderOrders = renderOrders;
+
+// ----------------- BOOT (on DOM ready) -----------------
+document.addEventListener('DOMContentLoaded', async () => {
+  // wait a bit if RTDB exists but not ready
+  try {
+    await waitForRTDB(2500).catch(()=>null); // don't fail hard, fallback allowed
+  } catch(e) {}
+
+  // initial render owner list in any page that has owner UI:
+  (async function renderOwnerListUI(){
+    const node = document.getElementById('ownerList') || document.getElementById('ownerTable') || document.getElementById('ownerTableBody');
+    if (!node) return;
+
+    const ownersObj = await loadOwners();
+    // if ownerList div (dashboard sidebar)
+    if (document.getElementById('ownerList')) {
+      const ownerListNode = document.getElementById('ownerList');
+      ownerListNode.innerHTML = '';
+      Object.values(ownersObj).forEach(o=>{
+        const div = document.createElement('div');
+        div.className = 'owner-row';
+        const name = document.createElement('div');
+        name.className = 'owner-name';
+        name.textContent = o.username;
+        const actions = document.createElement('div');
+
+        if (o.username !== 'stockwise') {
+          const del = document.createElement('button');
+          del.className = 'btn-ghost';
+          del.textContent = 'Hapus';
+          del.onclick = async ()=> {
+            if (!confirm(`Hapus owner "${o.username}" ?`)) return;
+            await deleteOwner(o.username);
+            renderOwnerListUI();
+          };
+          actions.appendChild(del);
+        } else {
+          actions.textContent = '';
         }
 
-        // simpan session
-        localStorage.setItem("isOwner", "true");
-
-        window.location.href = "owner-dashboard.html";
+        div.appendChild(name);
+        div.appendChild(actions);
+        ownerListNode.appendChild(div);
+      });
+      return;
     }
-    catch (err) {
-        console.error("Login error:", err);
-        msg.textContent = "Terjadi kesalahan.";
-        msg.style.color = "red";
+
+    // if table exists
+    if (document.getElementById('ownerTable')) {
+      const table = document.getElementById('ownerTable');
+      table.innerHTML = '';
+      Object.values(ownersObj).forEach(o=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${o.username}</td><td>${o.username === 'stockwise' ? '-' : o.password}</td><td>${o.username !== 'stockwise' ? '<button class="delete-btn" onclick="deleteOwner(\''+o.username+'\')">Hapus</button>' : '-'}</td>`;
+        table.appendChild(tr);
+      });
     }
-}
+  })();
 
-
-// =======================================================
-// 10. Load pesanan realtime di owner dashboard
-// =======================================================
-function loadOrdersRealtime() {
-    const db = window.fb.db;
-    const ordersRef = window.fb.ref(db, "orders");
-
-    window.fb.onValue(ordersRef, (snapshot) => {
-        const data = snapshot.val() || {};
-        renderOrders(data);
-    });
-}
-
-
-// =======================================================
-// 11. Render pesanan
-// =======================================================
-function renderOrders(orders) {
-    const table = document.getElementById("orderTableBody");
-    if (!table) return;
-
-    table.innerHTML = "";
-
-    Object.keys(orders).forEach((id) => {
-        const order = orders[id];
-
-        const row = document.createElement("tr");
-        row.innerHTML = `
-            <td>${order.name}</td>
-            <td>${order.total}</td>
-            <td>${order.payment}</td>
-            <td>${order.status || "Menunggu"}</td>
-            <td>
-                <button onclick="updateOrderStatus('${id}', 'diproses')">Diproses</button>
-                <button onclick="updateOrderStatus('${id}', 'siap')">Siap</button>
-                <button onclick="updateOrderStatus('${id}', 'selesai')">Selesai</button>
-            </td>
-        `;
-
-        table.appendChild(row);
-    });
-}
-
-
-// =======================================================
-// 12. Update status pesanan
-// =======================================================
-async function updateOrderStatus(id, status) {
-    const db = window.fb.db;
-    const refPath = window.fb.ref(db, `orders/${id}/status`);
-
-    await window.fb.set(refPath, status);
-
-    console.log(`Order ${id} → ${status}`);
-}
-
-
-// =======================================================
-// END OF OWNER.JS
-// =======================================================
+  // if dashboard orders area present, start realtime listen
+  loadOrdersRealtime();
+});
