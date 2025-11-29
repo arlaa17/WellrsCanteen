@@ -202,8 +202,20 @@ document.addEventListener("DOMContentLoaded", async () => {
   await waitForRTDB().catch(()=>{});
 
   if (document.getElementById("ownerUsername")) {
-    document.getElementById("btnLogin").onclick = ownerLogin;
-  }
+    const loginBtn =
+      document.querySelector("#btnLogin") ||
+      document.querySelector("button.loginbtn") ||
+      document.querySelector("button.button-login") ||
+      document.querySelector("button[type='submit']") ||
+      document.querySelector("button");
+
+    if (loginBtn) {
+      loginBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        ownerLogin();
+      });
+    }
+    }
 
   if (document.getElementById("ownerList")) {
     renderOwnerList();
