@@ -1,4 +1,13 @@
-// GANTI isi config berikut pakai config-mu sendiri dari Firebase Console
+// js/firebase.js  (module, single init - replace config values below)
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+import {
+  getDatabase, ref as dbRef, set as dbSet, get as dbGet, update as dbUpdate,
+  remove as dbRemove, onValue as dbOnValue
+} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
+
+// ====== CONFIG ======
+// Replace these with your Firebase project's config if different.
+// (these are the values you provided earlier; double-check in Firebase Console)
 const firebaseConfig = {
   apiKey: "AIzaSyCm2AkoWA-rSTi7j0-A0EARxKBX6n9_1H0",
   authDomain: "wellrs-canteen.firebaseapp.com",
@@ -9,17 +18,51 @@ const firebaseConfig = {
   appId: "1:414987689956:web:3063be71602cda0d1cf1f1"
 };
 
-// Inisialisasi Firebase
-const app = firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+const fbApp = initializeApp(firebaseConfig);
+const db = getDatabase(fbApp);
 
-// Buat helper biar mudah dipakai di semua file
+// helper device id & availability (single source of truth)
+function getDeviceId() {
+  let id = localStorage.getItem("wc_deviceId");
+  if (!id) {
+    id = "dev-" + Date.now().toString(36) + "-" + Math.floor(Math.random() * 10000);
+    localStorage.setItem("wc_deviceId", id);
+  }
+  return id;
+}
+function isFirebaseAvailable() {
+  return !!(window && db && typeof dbRef === "function");
+}
+
+// expose simple API on window.fb used by owner.js & script.js
 window.fb = {
   db,
-  ref: firebase.database().ref,
-  get: (ref) => ref.get(),
-  set: (ref, val) => ref.set(val),
-  update: (ref, val) => ref.update(val),
-  remove: (ref) => ref.remove(),
-  onValue: (ref, cb) => ref.on("value", cb),
+  ref: (path) => dbRef(db, path),
+  set: async (pathOrRef, val) => {
+    const r = typeof pathOrRef === "string" ? dbRef(db, pathOrRef) : pathOrRef;
+    return dbSet(r, val);
+  },
+  get: async (pathOrRef) => {
+    const r = typeof pathOrRef === "string" ? dbRef(db, pathOrRef) : pathOrRef;
+    return dbGet(r);
+  },
+  update: async (pathOrRef, val) => {
+    const r = typeof pathOrRef === "string" ? dbRef(db, pathOrRef) : pathOrRef;
+    return dbUpdate(r, val);
+  },
+  remove: async (pathOrRef) => {
+    const r = typeof pathOrRef === "string" ? dbRef(db, pathOrRef) : pathOrRef;
+    return dbRemove(r);
+  },
+  onValue: (pathOrRef, cb) => {
+    const r = typeof pathOrRef === "string" ? dbRef(db, pathOrRef) : pathOrRef;
+    return dbOnValue(r, cb);
+  }
 };
+
+// also expose helpers globally so other scripts don't re-declare them
+window.getDeviceId = getDeviceId;
+window.isFirebaseAvailable = isFirebaseAvailable;
+
+// optional: log to help debugging
+console.info("Firebase initialized. databaseURL:", firebaseConfig.databaseURL);

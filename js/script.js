@@ -1191,412 +1191,191 @@ function checkOrderReady() {
 // Cek setiap 3 detik
 setInterval(checkOrderReady, 3000);
 
-/* script.js (Firebase-enabled, fallback to localStorage) */
+/* ======= FIREBASE INTEGRATION (non-destructive) =======
+   This section adds remote sync to Firebase without re-declaring
+   existing variables or functions. It expects window.fb, window.getDeviceId
+   and window.isFirebaseAvailable to be provided by js/firebase.js.
+====================================================== */
 
-function isFirebaseAvailable() {
-  return window.fb && window.fb.db && window.fb.ref;
+function isFirebaseAvailableLocal() {
+  return !!(window && window.fb && typeof window.fb.get === "function" && typeof window.fb.set === "function");
 }
 
-function getDeviceId() {
+function getDeviceIdLocal() {
+  if (typeof window.getDeviceId === "function") return window.getDeviceId();
   let id = localStorage.getItem("wc_deviceId");
   if (!id) {
-    id = "dev-" + Date.now().toString(36) + "-" + Math.floor(Math.random() * 10000);
+    id = "dev-" + Date.now().toString(36) + "-" + Math.floor(Math.random()*10000);
     localStorage.setItem("wc_deviceId", id);
   }
   return id;
 }
 
-/* --------------- (the rest of your original code like notifications, navbar, search, icons) --------------- */
-/* For brevity, we assume the non-storage UI code remains unchanged. Keep your original code above. */
-
-/* =========================
-   MINI CART + STORAGE (now supports Firebase)
-========================= */
-
-let cart = JSON.parse(localStorage.getItem("cartItems")) || [];
-let cartCount = cart.reduce((sum, it) => sum + (it.qty || 0), 0);
-
-const miniCart = document.getElementById("miniCart");
-const cartItems = document.getElementById("cartItems");
-const cartTotal = document.getElementById("cartTotal");
-const cartBadge = document.querySelector(".cart-badge");
-const cartIconEl = document.getElementById("shopping-cart");
-
+// persist current cart to remote (best-effort)
 async function persistCartToRemote() {
-  if (!isFirebaseAvailable()) return;
-  const deviceId = getDeviceId();
+  if (!isFirebaseAvailableLocal()) return;
   try {
-    await window.fb.set(window.fb.ref(window.fb.db, `users/${deviceId}/cart`), cart);
+    await window.fb.set(`users/${getDeviceIdLocal()}/cart`, cart || []);
   } catch (e) {
     console.warn("persistCartToRemote failed", e);
   }
 }
 
-function saveCart() {
-  localStorage.setItem("cartItems", JSON.stringify(cart));
-  localStorage.setItem("cartCount", cartCount);
-  // push to remote too (no await)
-  persistCartToRemote();
-}
-
-function updateBadge() {
-  if (!cartBadge) return;
-  cartBadge.textContent = cartCount;
-  cartBadge.style.display = cartCount > 0 ? "inline-block" : "none";
-}
-
-function cartBounce() {
-  if (!cartIconEl) return;
-  cartIconEl.classList.add("bounce");
-  setTimeout(() => cartIconEl.classList.remove("bounce"), 450);
-}
-
-/* fly animation kept as-is... (keep animateFlyToCart) */
-
-/* CORE CART LOGIC (unchanged logic, added persist) */
-function addToCart(name, price, imgSrc) {
-  let product = cart.find((item) => item.name === name);
-  if (product) product.qty++;
-  else cart.push({ name, price, qty: 1, img: imgSrc || "" });
-  cartCount = cart.reduce((s,i)=>s+(i.qty||0),0);
-  saveCart();
-  updateBadge();
-  renderCart();
-  cartBounce();
-}
-
-function changeQty(index, amount) {
-  if (!cart[index]) return;
-  cart[index].qty += amount;
-  if (cart[index].qty <= 0) {
-    cart.splice(index, 1);
-  }
-  cartCount = cart.reduce((s,i)=>s+(i.qty||0),0);
-  saveCart();
-  updateBadge();
-  renderCart();
-}
-
-function deleteItem(index) {
-  if (!cart[index]) return;
-  cartCount -= cart[index].qty;
-  cart.splice(index,1);
-  cartCount = cart.reduce((s,i)=>s+(i.qty||0),0);
-  saveCart();
-  updateBadge();
-  renderCart();
-}
-
-function renderCart() {
-  if (!cartItems) return;
-  cartItems.innerHTML = "";
-  let totalPrice = 0;
-  cart.forEach((item, index) => {
-    const itemTotal = (item.price || 0) * (item.qty || 0);
-    totalPrice += itemTotal;
-    const div = document.createElement("div");
-    div.classList.add("cart-item");
-    div.innerHTML = `
-      <div class="cart-item-left">
-        <img src="${item.img || "img/placeholder.png"}" class="cart-item-img" alt="${item.name}">
-        <div>
-          <h4>${item.name}</h4>
-          <p>Rp ${Number(item.price || 0).toLocaleString()}</p>
-          <p style="font-size:13px;color:#666;margin-top:6px;">Subtotal: <strong>Rp ${itemTotal.toLocaleString()}</strong></p>
-        </div>
-      </div>
-      <div class="cart-item-actions">
-        <div class="qty-controls">
-          <button class="qty-btn" onclick="changeQty(${index}, -1)">-</button>
-          <span>${item.qty}</span>
-          <button class="qty-btn" onclick="changeQty(${index}, 1)">+</button>
-        </div>
-        <button class="delete-btn" onclick="deleteItem(${index})">Hapus</button>
-      </div>
-    `;
-    cartItems.appendChild(div);
-  });
-  cartTotal.textContent = "Rp " + totalPrice.toLocaleString();
-}
-
-/* OPEN / CLOSE MINI CART kept same... */
-
-/* INIT add-button handlers kept same... */
-
-/* INITIAL UI UPDATE */
-updateBadge();
-renderCart();
-
-/* ------------- FAVORITE (stored under users/{deviceId}/favorites) ------------- */
-
-let favoriteList = JSON.parse(localStorage.getItem("favoriteItems")) || [];
-const favoriteBtn = document.getElementById("favoriteBtn");
-const favoriteCount = document.getElementById("favoriteCount");
-const miniFavorite = document.getElementById("miniFavorite");
-const favoriteItemsEl = document.getElementById("favoriteItems");
-const closeFavorite = document.getElementById("closeFavorite");
-
+// persist favorites
 async function persistFavoritesToRemote() {
-  if (!isFirebaseAvailable()) return;
-  const deviceId = getDeviceId();
+  if (!isFirebaseAvailableLocal()) return;
   try {
-    await window.fb.set(window.fb.ref(window.fb.db, `users/${deviceId}/favorites`), favoriteList);
+    await window.fb.set(`users/${getDeviceIdLocal()}/favorites`, favoriteList || []);
   } catch (e) {
     console.warn("persistFavoritesToRemote failed", e);
   }
 }
 
-function updateFavoriteBadge() {
-  if (!favoriteCount) return;
-  favoriteCount.textContent = favoriteList.length;
-  favoriteCount.style.display = favoriteList.length > 0 ? "flex" : "none";
-}
-
-function addToFavorite(name, price, imgSrc) {
-  const exists = favoriteList.some(item => item.name === name);
-  if (!exists) {
-    favoriteList.push({ name, price, img: imgSrc });
-    localStorage.setItem("favoriteItems", JSON.stringify(favoriteList));
-    updateFavoriteBadge();
-    renderFavoriteList();
-    persistFavoritesToRemote();
+// push order to remote (best-effort)
+async function pushOrderToRemote(order) {
+  if (!isFirebaseAvailableLocal()) return;
+  try {
+    await window.fb.set(`orders/${order.id}`, order);
+  } catch (e) {
+    console.warn("pushOrderToRemote failed", e);
   }
 }
 
-function renderFavoriteList() {
-  if (!favoriteItemsEl) return;
-  favoriteItemsEl.innerHTML = "";
-  if (favoriteList.length === 0) {
-    favoriteItemsEl.innerHTML = "<p style='color:#444;'>Belum ada favorit.</p>";
-    return;
-  }
-  favoriteList.forEach((item, index) => {
-    const div = document.createElement("div");
-    div.classList.add("fav-item");
-    div.innerHTML = `
-      <img src="${item.img}">
-      <div>
-        <h4>${item.name}</h4>
-        <p>${item.price}</p>
-      </div>
-      <button class="fav-remove" onclick="removeFavorite(${index})">Hapus</button>
-    `;
-    favoriteItemsEl.appendChild(div);
-  });
-}
-renderFavoriteList();
-
-function removeFavorite(index) {
-  favoriteList.splice(index, 1);
-  localStorage.setItem("favoriteItems", JSON.stringify(favoriteList));
-  updateFavoriteBadge();
-  renderFavoriteList();
-  persistFavoritesToRemote();
-}
-
-/* =========================
-   CHECKOUT -> save order to Firebase / localStorage
-========================= */
-
-function formatRp(n){ return "Rp " + (n||0).toLocaleString(); }
-
-function populateOrderSummary() {
-  const cartLocal = JSON.parse(localStorage.getItem("cartItems")) || [];
-  orderSummary.innerHTML = "";
-  if (!cartLocal.length) {
-    orderSummary.innerHTML = '<p class="muted">Keranjang kosong. Tambahkan item dulu.</p>';
-    confirmOrderBtn.disabled = true;
-    return;
-  }
-  let total = 0;
-  cartLocal.forEach(item => {
-    const itemTotal = (item.price||0) * (item.qty||0);
-    total += itemTotal;
-    const node = document.createElement("div");
-    node.className = "order-item";
-    node.innerHTML = `
-      <div class="order-item-left">
-        <img src="${item.img || "img/placeholder.png"}" class="order-item-img" alt="${item.name}">
-        <div class="order-item-meta">
-          <h4>${item.name}</h4>
-          <p>${formatRp(item.price)} × ${item.qty}</p>
-        </div>
-      </div>
-      <div class="order-item-right">
-        <strong>${formatRp(itemTotal)}</strong>
-      </div>
-    `;
-    orderSummary.appendChild(node);
-  });
-  const totalDiv = document.createElement("div");
-  totalDiv.className = "order-total";
-  totalDiv.innerHTML = `<span>Total Pesanan</span><span>${formatRp(total)}</span>`;
-  orderSummary.appendChild(totalDiv);
-  confirmOrderBtn.disabled = false;
-}
-
-confirmOrderBtn.addEventListener("click", async () => {
-  const cartLocal = JSON.parse(localStorage.getItem("cartItems")) || [];
-  if (!cartLocal.length) return alert("Keranjang kosong.");
-
-  const name = document.getElementById("custName").value.trim();
-  const contact = document.getElementById("custContact").value.trim();
-  const note = document.getElementById("custNote").value.trim();
-  const payment = checkoutForm.payment.value;
-
-  if (!name) return alert("Mohon isi nama pemesan.");
-  if (!payment) return alert("Pilih metode pembayaran.");
-
-  const items = cartLocal.map(i=>({ name: i.name, qty: i.qty, price: i.price, img: i.img }));
-  const etaMinutes = items.reduce((s,it)=> s + (window.waktuMasak && window.waktuMasak[it.name] ? window.waktuMasak[it.name] * it.qty : 5*it.qty), 0);
-
-  const order = {
-    id: "ORD-" + Date.now(),
-    name,
-    contact,
-    note,
-    items,
-    payment,
-    total: items.reduce((s,i)=>s + (i.price||0)*(i.qty||0), 0),
-    createdAt: Date.now(),
-    status: "new",
-    eta: etaMinutes + " menit",
-    etaTimestamp: Date.now() + (etaMinutes * 60 * 1000)
-  };
-
-  // write to firebase if available
-  if (isFirebaseAvailable()) {
-    try {
-      await window.fb.set(window.fb.ref(window.fb.db, `orders/${order.id}`), order);
-      // set a quick index for order queue if you want; but orders path is fine
-    } catch (e) {
-      console.warn("Failed to write order to Firebase, fallback local", e);
-      const orders = JSON.parse(localStorage.getItem("orders")) || [];
-      orders.unshift(order);
-      localStorage.setItem("orders", JSON.stringify(orders));
-    }
-  } else {
+// check remote signals for orders (best-effort)
+async function checkRemoteOrderSignals() {
+  if (!isFirebaseAvailableLocal()) return;
+  try {
     const orders = JSON.parse(localStorage.getItem("orders")) || [];
-    orders.unshift(order);
-    localStorage.setItem("orders", JSON.stringify(orders));
-  }
-
-  localStorage.setItem("myLastOrderId", order.id);
-  successMsg.textContent = `Pesanan #${order.id} diterima. Terima kasih ${name}!`;
-  etaText.textContent = `Estimasi selesai: sekitar ${etaMinutes} menit.`;
-  orderSuccess.style.display = "flex";
-
-  // clear cart
-  localStorage.removeItem("cartItems");
-  localStorage.removeItem("cartCount");
-  cart.length = 0;
-  updateBadge();
-  renderCart();
-});
-
-/* =========================
-   Notifications: check orderReady
-   - if firebase available, read /orderSignals/{orderId}
-   - else fallback to localStorage signals
-========================= */
-
-async function checkOrderReady() {
-  const orders = JSON.parse(localStorage.getItem("orders")) || [];
-  // if firebase available, read signals
-  if (isFirebaseAvailable()) {
     for (const order of orders) {
-      try {
-        const snap = await window.fb.get(window.fb.ref(window.fb.db, `orderSignals/${order.id}`));
-        if (snap.exists() && snap.val() === "yes") {
-          if (Notification.permission === "granted") {
-            new Notification("Pesanan Siap!", {
-              body: `Pesanan #${order.id} atas nama ${order.name} sudah siap diambil.`,
-              icon: "img/favicon.png"
-            });
-          }
-          // remove remote signal after notifying (so it won't notify again)
-          await window.fb.remove(window.fb.ref(window.fb.db, `orderSignals/${order.id}`));
-        }
-      } catch (e) { console.warn("checkOrderReady fb failed", e); }
-    }
-  } else {
-    // localStorage fallback (existing behavior)
-    orders.forEach(order => {
-      const signal = localStorage.getItem("orderReady_" + order.id);
-      if (signal === "yes") {
+      const snap = await window.fb.get(`orderSignals/${order.id}`);
+      const exists = snap && snap.exists ? snap.exists() : (snap != null);
+      const val = exists && snap.val ? snap.val() : (exists ? snap : null);
+      if (val === "yes") {
         if (Notification.permission === "granted") {
           new Notification("Pesanan Siap!", {
             body: `Pesanan #${order.id} atas nama ${order.name} sudah siap diambil.`,
             icon: "img/favicon.png"
           });
         }
-        localStorage.removeItem("orderReady_" + order.id);
+        // try remove to avoid repeat
+        try { await window.fb.remove(`orderSignals/${order.id}`); } catch(e){}
       }
-    });
+    }
+  } catch (e) {
+    console.warn("checkRemoteOrderSignals failed", e);
   }
 }
 
-setInterval(checkOrderReady, 3000);
-
-/* =========================
-   Also: load remote cart/favorites on startup if firebase available
-========================= */
-
-async function loadRemoteUserData() {
-  if (!isFirebaseAvailable()) return;
-  const deviceId = getDeviceId();
+// load remote cart & favorites on startup (merge)
+async function loadRemoteUserDataSafe() {
+  if (!isFirebaseAvailableLocal()) return;
+  const deviceId = getDeviceIdLocal();
   try {
     // cart
-    const cartSnap = await window.fb.get(window.fb.ref(window.fb.db, `users/${deviceId}/cart`));
-    if (cartSnap.exists()) {
-      cart = cartSnap.val() || [];
+    const cartSnap = await window.fb.get(`users/${deviceId}/cart`);
+    let remoteCart = null;
+    if (cartSnap && cartSnap.exists) {
+      remoteCart = cartSnap.exists() ? cartSnap.val() : null;
+    } else {
+      remoteCart = cartSnap && !cartSnap.exists ? null : cartSnap;
+    }
+    if (Array.isArray(remoteCart) && remoteCart.length) {
+      cart = remoteCart;
       cartCount = cart.reduce((s,i)=>s+(i.qty||0),0);
       localStorage.setItem("cartItems", JSON.stringify(cart));
       updateBadge();
       renderCart();
     } else {
-      // write local -> remote so remote has initial
-      await window.fb.set(window.fb.ref(window.fb.db, `users/${deviceId}/cart`), cart);
+      // initialize remote with local
+      await window.fb.set(`users/${deviceId}/cart`, cart || []);
     }
 
     // favorites
-    const favSnap = await window.fb.get(window.fb.ref(window.fb.db, `users/${deviceId}/favorites`));
-    if (favSnap.exists()) {
-      favoriteList = favSnap.val() || [];
+    const favSnap = await window.fb.get(`users/${deviceId}/favorites`);
+    let remoteFav = null;
+    if (favSnap && favSnap.exists) {
+      remoteFav = favSnap.exists() ? favSnap.val() : null;
+    } else {
+      remoteFav = favSnap && !favSnap.exists ? null : favSnap;
+    }
+    if (Array.isArray(remoteFav)) {
+      favoriteList = remoteFav;
       localStorage.setItem("favoriteItems", JSON.stringify(favoriteList));
       updateFavoriteBadge();
       renderFavoriteList();
     } else {
-      await window.fb.set(window.fb.ref(window.fb.db, `users/${deviceId}/favorites`), favoriteList);
+      await window.fb.set(`users/${deviceId}/favorites`, favoriteList || []);
     }
+
+    // setup realtime listener for orderSignals to show notifications
+    try {
+      window.fb.onValue(`orderSignals`, (snap) => {
+        const val = (snap && snap.val) ? snap.val() : snap;
+        const myOrders = JSON.parse(localStorage.getItem("orders")) || [];
+        myOrders.forEach(o => {
+          if (val && val[o.id] === "yes") {
+            if (Notification.permission === "granted") {
+              new Notification("Pesanan Siap!", {
+                body: `Pesanan #${o.id} sudah siap diambil.`,
+                icon: "img/favicon.png"
+              });
+            }
+            // best-effort remove
+            try { window.fb.remove(`orderSignals/${o.id}`); } catch(e){}
+          }
+        });
+      });
+    } catch(e){ /* ignore */ }
+
   } catch (e) {
-    console.warn("loadRemoteUserData failed", e);
+    console.warn("loadRemoteUserDataSafe failed", e);
   }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  // try to sync remote data (if configured)
-  loadRemoteUserData();
+// Wire periodic remote checks (non-blocking)
+setInterval(() => {
+  // remote signals
+  if (isFirebaseAvailableLocal()) checkRemoteOrderSignals();
+}, 5000);
 
-  // if Firebase is available, set realtime listener for orderSignals to notify instantly
-  if (isFirebaseAvailable()) {
-    // onValue listener for orderSignals root (optional)
-    window.fb.onValue(window.fb.ref(window.fb.db, "orderSignals"), (snap) => {
-      const val = snap.val() || {};
-      // check if any signal matches our local orders
-      const myOrders = JSON.parse(localStorage.getItem("orders")) || [];
-      myOrders.forEach(o => {
-        if (val[o.id] === "yes") {
-          if (Notification.permission === "granted") {
-            new Notification("Pesanan Siap!", {
-              body: `Pesanan #${o.id} sudah siap diambil.`,
-              icon: "img/favicon.png"
-            });
-          }
-          // remove remote signal
-          window.fb.remove(window.fb.ref(window.fb.db, `orderSignals/${o.id}`));
-        }
-      });
-    });
-  }
+// try load on DOMContentLoaded
+document.addEventListener("DOMContentLoaded", () => {
+  loadRemoteUserDataSafe();
+  // ensure local sync after user interactions
+  window.addEventListener("beforeunload", () => {
+    // best-effort persist
+    try { persistCartToRemote(); persistFavoritesToRemote(); } catch(e){}
+  });
 });
+
+// Hook into existing save paths (best-effort): override saveCart and addToFavorite if present
+// If original functions exist, we wrap them to also persist to remote.
+if (typeof saveCart === "function") {
+  const _origSaveCart = saveCart;
+  saveCart = function() {
+    _origSaveCart();
+    persistCartToRemote();
+  };
+}
+if (typeof addToFavorite === "function") {
+  const _origAddToFavorite = addToFavorite;
+  addToFavorite = function(name, price, img) {
+    _origAddToFavorite(name, price, img);
+    persistFavoritesToRemote();
+  };
+}
+// Also wrap checkout confirm to pushOrderToRemote if exists
+if (typeof confirmOrderBtn !== "undefined" && confirmOrderBtn) {
+  // add additional listener to push to remote after order created
+  confirmOrderBtn.addEventListener("click", async () => {
+    const lastOrderId = localStorage.getItem("myLastOrderId");
+    if (!lastOrderId) return;
+    const orders = JSON.parse(localStorage.getItem("orders")) || [];
+    const order = orders.find(o => o.id === lastOrderId);
+    if (order && isFirebaseAvailableLocal()) {
+      try { await pushOrderToRemote(order); } catch(e){ console.warn("pushOrderToRemote failed in click", e); }
+    }
+  });
+}
+
+/* End Firebase integration section */

@@ -1,44 +1,38 @@
-/* OWNER + ORDER SYSTEM (Firebase-enabled, fallback localStorage) */
+// js/owner.js (fixed to use window.fb helpers, preserved behavior)
 
-/* -------------------------
-   Utilities: deviceId + isFirebaseAvailable
-   ------------------------- */
-function getDeviceId() {
+// small helpers (do not redeclare if exist)
+const _getDeviceId = window.getDeviceId || ( () => {
   let id = localStorage.getItem("wc_deviceId");
   if (!id) {
-    id = "dev-" + Date.now().toString(36) + "-" + Math.floor(Math.random() * 10000);
+    id = "dev-" + Date.now().toString(36) + "-" + Math.floor(Math.random()*10000);
     localStorage.setItem("wc_deviceId", id);
   }
   return id;
-}
+});
+const _isFirebaseAvailable = window.isFirebaseAvailable || (() => !!(window.fb && window.fb.db));
 
-function isFirebaseAvailable() {
-  return window.fb && window.fb.db && window.fb.ref;
-}
+// use these inside functions
+function getDeviceId() { return _getDeviceId(); }
+function isFirebaseAvailable() { return _isFirebaseAvailable(); }
 
-/* =======================
-   OWNERS (DB: /owners/)
-   ======================= */
+/* ===================== OWNERS ===================== */
 
 async function loadOwners() {
   if (isFirebaseAvailable()) {
     try {
       const snap = await window.fb.get(window.fb.ref(window.fb.db, "owners"));
-      const val = snap.exists() ? snap.val() : null;
+      const val = (snap && typeof snap.exists === "function") ? (snap.exists() ? snap.val() : null) : (snap || null);
       if (!val) {
-        // make default owner
         const defaultOwner = { stockwise: { username: "stockwise", password: "ferrari", role: "admin", createdAt: Date.now() } };
         await window.fb.set(window.fb.ref(window.fb.db, "owners"), defaultOwner);
         return Object.values(defaultOwner);
       }
-      // val is object keyed by ownerId or username; normalize to array
       return Object.keys(val).map(k => Object.assign({}, val[k], { _key: k }));
     } catch (e) {
       console.warn("FB loadOwners failed, fallback localStorage", e);
     }
   }
 
-  // fallback localStorage (legacy)
   let owners = localStorage.getItem("owners");
   if (!owners) {
     owners = JSON.stringify([{ username: "stockwise", password: "ferrari", role: "admin", createdAt: Date.now() }]);
@@ -49,11 +43,8 @@ async function loadOwners() {
 
 async function saveOwners(list) {
   if (isFirebaseAvailable()) {
-    // convert array -> object keyed by username
     const obj = {};
-    list.forEach(o => {
-      obj[o.username] = o;
-    });
+    list.forEach(o => obj[o.username] = o);
     try {
       await window.fb.set(window.fb.ref(window.fb.db, "owners"), obj);
       return;
@@ -61,28 +52,24 @@ async function saveOwners(list) {
       console.warn("FB saveOwners failed, fallback localStorage", e);
     }
   }
-
   localStorage.setItem("owners", JSON.stringify(list));
 }
 
-/* ========== LOGIN ========== */
+/* LOGIN */
 async function ownerLogin() {
-  const u = document.getElementById("ownerUsername").value.trim();
-  const p = document.getElementById("ownerPassword").value.trim();
-
+  const u = (document.getElementById("ownerUsername") || {}).value?.trim() || "";
+  const p = (document.getElementById("ownerPassword") || {}).value?.trim() || "";
   const owners = await loadOwners();
   const found = owners.find(o => o.username === u && o.password === p);
-
   if (!found) {
     alert("Username atau password salah.");
     return;
   }
-
   sessionStorage.setItem("ownerAuth", u);
   location.href = "owner-dashboard.html";
 }
 
-/* ========== ADD / DELETE OWNER ========== */
+/* ADD / DELETE OWNER */
 async function addOwner(username, password) {
   const auth = sessionStorage.getItem("ownerAuth");
   if (auth !== "stockwise") {
@@ -91,17 +78,11 @@ async function addOwner(username, password) {
   }
   const owners = await loadOwners();
   if (owners.some(o => o.username === username)) return false;
-
   const newOwner = { username, password, role: "owner", createdAt: Date.now() };
-
-  // write to DB if available
   if (isFirebaseAvailable()) {
-    // write under owners/{username}
     await window.fb.set(window.fb.ref(window.fb.db, `owners/${username}`), newOwner);
     return true;
   }
-
-  // fallback local
   owners.push(newOwner);
   saveOwners(owners);
   return true;
@@ -117,83 +98,73 @@ async function deleteOwner(username) {
     alert("Hanya owner utama yang bisa menghapus admin.");
     return;
   }
-
   if (isFirebaseAvailable()) {
     await window.fb.remove(window.fb.ref(window.fb.db, `owners/${username}`));
     renderOwnerList();
     return;
   }
-
-  let owners = loadOwners();
+  let owners = await loadOwners();
   owners = owners.filter(o => o.username !== username);
   saveOwners(owners);
   renderOwnerList();
 }
 
-/* ========== RENDER OWNER LIST ========== */
+/* RENDER OWNER LIST */
 async function renderOwnerList() {
   const table = document.getElementById("ownerTable");
-  const auth = sessionStorage.getItem("ownerAuth");
   if (!table) return;
-
+  const auth = sessionStorage.getItem("ownerAuth");
   const owners = await loadOwners();
   table.innerHTML = "";
-
   owners.forEach(o => {
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${o.username}</td>
       <td>${o.username === "stockwise" ? "-" : o.password}</td>
       <td>
-        ${
-          auth === "stockwise" && o.username !== "stockwise"
-            ? `<button class="btn small danger" onclick="deleteOwner('${o.username}')">Hapus</button>`
-            : "-"
-        }
+        ${auth === "stockwise" && o.username !== "stockwise"
+          ? `<button class="btn small danger" onclick="deleteOwner('${o.username}')">Hapus</button>`
+          : "-"}
       </td>
     `;
     table.appendChild(row);
   });
 }
 
-/* init add owner button */
+/* INIT add owner button (if exists) */
 document.addEventListener("DOMContentLoaded", () => {
   const btn = document.getElementById("addOwner");
   if (!btn) return;
   btn.addEventListener("click", async () => {
-    const u = document.getElementById("newOwnerUsername").value.trim();
-    const p = document.getElementById("newOwnerPassword").value.trim();
+    const u = (document.getElementById("newOwnerUsername")||{}).value?.trim() || "";
+    const p = (document.getElementById("newOwnerPassword")||{}).value?.trim() || "";
     const msg = document.getElementById("ownerMsg");
-    msg.textContent = "";
+    if (msg) msg.textContent = "";
     if (!u || !p) {
-      msg.textContent = "Isi username & password.";
+      if (msg) msg.textContent = "Isi username & password.";
       return;
     }
-    const ok = await addOwner(u, p);
+    const ok = await addOwner(u,p);
     if (!ok) {
-      msg.textContent = "Username sudah digunakan atau anda tidak memiliki akses.";
+      if (msg) msg.textContent = "Username sudah digunakan atau anda tidak memiliki akses.";
       return;
     }
-    msg.textContent = "Owner berhasil ditambahkan!";
-    document.getElementById("newOwnerUsername").value = "";
-    document.getElementById("newOwnerPassword").value = "";
+    if (msg) msg.textContent = "Owner berhasil ditambahkan!";
+    (document.getElementById("newOwnerUsername")||{}).value = "";
+    (document.getElementById("newOwnerPassword")||{}).value = "";
     await renderOwnerList();
   });
 });
 
-/* =======================
-   ORDERS (DB: /orders/) 
-   - renderOrders jadi realtime jika Firebase aktif
-   ======================= */
+/* ================= ORDERS (same logic, using window.fb) ================= */
 
 async function loadOrders() {
   if (isFirebaseAvailable()) {
     try {
       const snap = await window.fb.get(window.fb.ref(window.fb.db, "orders"));
-      if (!snap.exists()) return [];
-      const val = snap.val();
-      // val is object keyed by orderId; convert to array sorted by createdAt desc
-      return Object.keys(val).map(k => val[k]).sort((a,b)=> (b.createdAt||0) - (a.createdAt||0));
+      const val = (snap && typeof snap.exists === "function") ? (snap.exists() ? snap.val() : null) : (snap || null);
+      if (!val) return [];
+      return Object.keys(val).map(k => val[k]).sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
     } catch (e) {
       console.warn("FB loadOrders failed, fallback localStorage", e);
     }
@@ -216,7 +187,6 @@ async function renderOrders() {
   const table = document.getElementById("orderTableBody");
   if (!table) return;
   table.innerHTML = "";
-
   orders.forEach(o => {
     const row = document.createElement("tr");
     row.innerHTML = `
@@ -236,19 +206,13 @@ async function renderOrders() {
   });
 }
 
-/* Realtime listener untuk orders jika fb tersedia */
 if (isFirebaseAvailable()) {
-  // set up realtime listener
-  window.fb.onValue(window.fb.ref(window.fb.db, "orders"), (snap) => {
-    // re-render when changed
-    renderOrders();
-  }, (err) => {
-    console.warn("Realtime orders listener error", err);
-  });
+  try {
+    window.fb.onValue(window.fb.ref(window.fb.db, "orders"), () => renderOrders());
+  } catch (e) { console.warn("realtime orders listener setup failed", e); }
 }
 
 async function updateOrderStatus(orderId) {
-  // load orders, modify, save
   const orders = await loadOrders();
   const updated = orders.map(o => {
     if (o.id === orderId) {
@@ -258,11 +222,8 @@ async function updateOrderStatus(orderId) {
     return o;
   });
   await saveOrders(updated);
-
-  // send ready signal if done
   const target = updated.find(x => x.id === orderId);
   if (target && target.status === "done") {
-    // write a small signal path orderSignals/{orderId}: "yes"
     if (isFirebaseAvailable()) {
       await window.fb.set(window.fb.ref(window.fb.db, `orderSignals/${orderId}`), "yes");
     } else {
@@ -283,7 +244,7 @@ async function deleteOrder(orderId) {
   renderOrders();
 }
 
-/* expose for console / html buttons */
+/* expose for console/html */
 window.renderOwnerList = renderOwnerList;
 window.renderOrders = renderOrders;
 window.ownerLogin = ownerLogin;
