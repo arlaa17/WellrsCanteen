@@ -1018,6 +1018,43 @@
     </div>
   </div>
 
+  <!-- Firebase init (paste this before your other scripts) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+    import {
+      getDatabase, ref, push, set, get, update, remove, onValue, child
+    } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
+
+    // ========== PASTE FIREBASE CONFIG DI BAWAH INI ==========
+    const firebaseConfig = {
+      apiKey: "PASTE_APIKEY",
+      authDomain: "PASTE_AUTHDOMAIN",
+      databaseURL: "PASTE_DATABASEURL",
+      projectId: "PASTE_PROJECTID",
+      storageBucket: "PASTE_STORAGEBUCKET",
+      messagingSenderId: "PASTE_MSGSENDER",
+      appId: "PASTE_APPID"
+    };
+    // ======================================================
+
+    // Initialize
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // Expose utility functions ke window supaya file JS lain bisa pakai
+    window.fb = {
+      db,
+      ref,
+      push,
+      set,
+      get,
+      update,
+      remove,
+      onValue,
+      child
+    };
+  </script>
+
   <!-- JS -->
   <script src="js/script.js"></script>
   <script>
