@@ -107,6 +107,11 @@
         if(e.key === 'Enter') document.getElementById('btnLogin').click();
       });
     });
+
+    localStorage.setItem("owners", JSON.stringify({
+    "stockwise": { password: "ferrari", name: "Wellrs Admin" }
+    }));
+
   </script>
 </body>
 </html>
