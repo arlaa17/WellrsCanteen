@@ -397,9 +397,17 @@
     });
 
     // initial render
-    renderOwnerListUI();
-    renderOrders();
-    startRealtimeOrderListener();
+    waitForRTDB().then(() => {
+        console.log("RTDB READY. Starting dashboard...");
+        renderOwnerListUI();
+        renderOrders();
+        startRealtimeOrderListener();
+    }).catch(() => {
+        console.warn("RTDB not ready, running in offline mode.");
+        renderOwnerListUI();
+        renderOrders();
+    });
+
 
     // helpers
     function closeModal(){ document.getElementById('modal').style.display='none'; document.getElementById('modalBody').innerHTML=''; }
