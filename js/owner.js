@@ -380,10 +380,12 @@ function startRealtimeOrderListener() {
             const data = snapshot.val() || {};
             const orders = Object.keys(data).map(id => data[id]);
 
-            // simpan ke local cache
-            saveOrders(orders);
+            // ☑ simpan ke local saja (tidak menulis ke Firebase)
+            try { 
+                localStorage.setItem("orders", JSON.stringify(orders)); 
+            } catch (e) {}
 
-            // render ulang UI dashboard
+            // ☑ hanya render UI
             if (typeof renderOwnerListUI === "function") {
                 renderOwnerListUI(orders);
             }
