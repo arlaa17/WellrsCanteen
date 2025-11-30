@@ -276,46 +276,56 @@
       renderOrders();
     };
 
-    function renderOrders(){
-      const orders = loadOrders();
-      const status = filterStatus.value;
-      const dateVal = filterDate.value;
-      const q = searchOrder.value.trim().toLowerCase();
+  function renderOrders() {
+    const orders = loadOrders();
+    const status = filterStatus.value;
+    const dateVal = filterDate.value;
+    const q = searchOrder.value.trim().toLowerCase();
 
-      let list = orders.slice().sort((a,b)=> new Date(b.createdAt) - new Date(a.createdAt));
-      if(status !== 'all') list = list.filter(o => (o.status||'new') === status);
-      if(dateVal) list = list.filter(o => (o.createdAt||'').slice(0,10) === dateVal);
-      if(q) list = list.filter(o => (o.id||'').toLowerCase().includes(q) || (o.name||'').toLowerCase().includes(q));
+    let list = orders.slice().sort((a,b)=> new Date(b.createdAt) - new Date(a.createdAt));
+    if(status !== 'all') list = list.filter(o => (o.status||'new') === status);
+    if(dateVal) list = list.filter(o => (o.createdAt||'').slice(0,10) === dateVal);
+    if(q) list = list.filter(o => (o.id||'').toLowerCase().includes(q) || (o.name||'').toLowerCase().includes(q));
 
-      ordersTableBody.innerHTML = '';
-      list.forEach(o=>{
-        const tr = document.createElement('tr');
-        const itemsText = (o.items || []).map(i=> `${i.name}×${i.qty}`).join(', ');
-        const created = new Date(o.createdAt).toLocaleString();
-        const total = (o.total||0).toLocaleString();
+    ordersTableBody.innerHTML = '';
 
-        tr.innerHTML = `
-          <td>${o.id}</td>
-          <td>${escapeHtml(o.name)}</td>
-          <td class="order-items">${escapeHtml(itemsText)}</td>
-          <td>${escapeHtml(o.note || "-")}</td>   <!-- ⭐ Kolom catatan -->
-          <td>Rp ${total}</td>
-          <td>${created}</td>
-          <td><span class="status ${statusClass(o.status)}">${(o.status||'new').toUpperCase()}</span></td>
-          <td class="actions">
-            <button class="btn-ghost" onclick="showDetail('${o.id}')">Detail</button>
-            <button class="btn-ghost" onclick="cycleStatus('${o.id}')">Next</button>
-            <button class="danger" onclick="deleteOrderConfirm('${o.id}')">Hapus</button>
-          </td>
-        `;
+    list.forEach(o => {
+      const tr = document.createElement('tr');
 
-        ordersTableBody.appendChild(tr);
-      });
+      // ITEMS PER BARIS (FIX)
+      const itemsText = (o.items || [])
+        .map(i => `${escapeHtml(i.name)} × ${i.qty}`)
+        .join('<br>');
 
-      totalCountEl.textContent = orders.length;
-      pendingCountEl.textContent = orders.filter(o=> (o.status||'new')==='new').length;
-      revenueTodayEl.textContent = 'Rp ' + (orders.reduce((s,o)=> s + (o.total||0), 0)).toLocaleString();
-    }
+      const created = new Date(o.createdAt).toLocaleString();
+      const total = (o.total||0).toLocaleString();
+
+      tr.innerHTML = `
+        <td>${o.id}</td>
+        <td>${escapeHtml(o.name)}</td>
+
+        <!-- ITEMS MULTILINE -->
+        <td class="order-items" style="line-height: 1.4;">${itemsText}</td>
+
+        <td>${escapeHtml(o.note || "-")}</td>
+        <td>Rp ${total}</td>
+        <td>${created}</td>
+        <td><span class="status ${statusClass(o.status)}">${(o.status||'new').toUpperCase()}</span></td>
+        <td class="actions">
+          <button class="btn-ghost" onclick="showDetail('${o.id}')">Detail</button>
+          <button class="btn-ghost" onclick="cycleStatus('${o.id}')">Next</button>
+          <button class="danger" onclick="deleteOrderConfirm('${o.id}')">Hapus</button>
+        </td>
+      `;
+
+      ordersTableBody.appendChild(tr);
+    });
+
+    totalCountEl.textContent = orders.length;
+    pendingCountEl.textContent = orders.filter(o=> (o.status||'new')==='new').length;
+    revenueTodayEl.textContent = 'Rp ' + (orders.reduce((s,o)=> s + (o.total||0), 0)).toLocaleString();
+  }
+
 
     // -------------------------
     // OWNER UI / Glue (uses owner.js helpers)
