@@ -7,15 +7,23 @@ function isRTDBReady() {
     return Boolean(window.firebase && firebase.database);
 }
 
-function waitForRTDB(timeout = 4000) {
-    return new Promise((resolve, reject) => {
-        const start = Date.now();
-        (function check() {
-            if (isRTDBReady()) return resolve(true);
-            if (Date.now() - start > timeout) return reject("RTDB timeout");
-            setTimeout(check, 150);
-        })();
+function waitForRTDB(){
+  return new Promise(resolve => {
+    const db = firebase.database();
+
+    // kalau dalam 2 detik tidak connected, tetap lanjut
+    let forced = setTimeout(() => {
+      console.warn("RTDB timeout, forcing continue…");
+      resolve();
+    }, 2000);
+
+    db.ref(".info/connected").on("value", s => {
+      if (s.val() === true) {
+        clearTimeout(forced);
+        resolve();
+      }
     });
+  });
 }
 
 /* Normalize owners list */
