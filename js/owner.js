@@ -366,3 +366,35 @@ function deleteOrder(id) {
 window.saveOrders = saveOrders;
 window.updateOrderStatus = updateOrderStatus;
 window.deleteOrder = deleteOrder;
+
+/* ========== REALTIME LISTENER FOR OWNER DASHBOARD ========== */
+
+function startRealtimeOrderListener() {
+    try {
+        if (!window.firebase || !firebase.database) {
+            console.warn("Firebase RTDB not ready");
+            return;
+        }
+
+        const ordersRef = firebase.database().ref("orders");
+
+        ordersRef.on("value", (snapshot) => {
+            const data = snapshot.val() || {};
+            const orders = Object.keys(data).map(id => data[id]);
+
+            // simpan ke local cache
+            saveOrders(orders);
+
+            // render ulang UI dashboard
+            if (typeof renderOwnerListUI === "function") {
+                renderOwnerListUI(orders);
+            }
+        });
+
+        console.log("Realtime listener aktif.");
+    } catch (e) {
+        console.warn("Gagal start realtime listener", e);
+    }
+}
+
+window.startRealtimeOrderListener = startRealtimeOrderListener;
