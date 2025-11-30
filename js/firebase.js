@@ -1,43 +1,41 @@
-// firebase.js — Firebase v8 compatible
-
-// Firebase config
-var firebaseConfig = {
-  apiKey: "AIzaSyCm2AkoWA-rSTi7j0-A0EARxKBX6n9_1H0",
-  authDomain: "wellrs-canteen.firebaseapp.com",
-  databaseURL: "https://wellrs-canteen-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "wellrs-canteen",
-  storageBucket: "wellrs-canteen.firebasestorage.app",
-  messagingSenderId: "414987689956",
-  appId: "1:414987689956:web:3063be71602cda0d1cf1f1"
+// firebase.js (Fixed Final)
+const firebaseConfig = {
+    apiKey: "AIzaSyD2EXAMPLE",
+    authDomain: "wellrs-canteen.firebaseapp.com",
+    databaseURL: "https://wellrs-canteen-default-rtdb.firebaseio.com",
+    projectId: "wellrs-canteen",
+    storageBucket: "wellrs-canteen.appspot.com",
+    messagingSenderId: "948593453453",
+    appId: "1:948593453453:web:example"
 };
 
-// Init Firebase (v8)
 firebase.initializeApp(firebaseConfig);
+const rtdb = firebase.database();
 
-// Realtime Database
-const database = firebase.database();
+let rtdbReady = false;
 
-// Expose helper API untuk owner.js & script.js
-window.fb = {
-  db: database,
-  ref: (path) => database.ref(path),
-  set: (path, val) => database.ref(path).set(val),
-  get: (path) => database.ref(path).once("value"),
-  update: (path, val) => database.ref(path).update(val),
-  remove: (path) => database.ref(path).remove(),
-  onValue: (path, cb) => database.ref(path).on("value", cb),
-};
+/** Menunggu RTDB benar-benar siap (Firebase kadang delay di GitHub pages) */
+function waitForRTDB(maxWait = 5000) {
+  return new Promise((resolve, reject) => {
+    const t0 = Date.now();
+    const interval = setInterval(() => {
+      if (firebase.apps.length > 0 && firebase.database) {
+        clearInterval(interval);
+        rtdbReady = true;
+        resolve(true);
+      } else if (Date.now() - t0 > maxWait) {
+        clearInterval(interval);
+        reject(false);
+      }
+    }, 100);
+  });
+}
 
-// Device ID
-window.getDeviceId = function(){
-  let id = localStorage.getItem("wc_deviceId");
-  if(!id){
-    id = "dev-" + Date.now().toString(36) + "-" + Math.floor(Math.random()*10000);
-    localStorage.setItem("wc_deviceId", id);
-  }
-  return id;
-};
+function getRTDB() {
+  if (!rtdbReady) console.warn("RTDB not ready yet");
+  return rtdb;
+}
 
-window.isFirebaseAvailable = () => true;
-
-console.info("Firebase v8 initialized.");
+window.waitForRTDB = waitForRTDB;
+window.getRTDB = getRTDB;
+window.rtdb = rtdb;
