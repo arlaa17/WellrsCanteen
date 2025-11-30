@@ -1,7 +1,7 @@
 // firebase.js — Firebase v8 compatible
 
 // Firebase config
-const firebaseConfig = {
+var firebaseConfig = {
   apiKey: "AIzaSyCm2AkoWA-rSTi7j0-A0EARxKBX6n9_1H0",
   authDomain: "wellrs-canteen.firebaseapp.com",
   databaseURL: "https://wellrs-canteen-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -17,7 +17,7 @@ firebase.initializeApp(firebaseConfig);
 // Realtime Database
 const database = firebase.database();
 
-// Expose helper API
+// Expose helper API untuk owner.js & script.js
 window.fb = {
   db: database,
   ref: (path) => database.ref(path),
@@ -28,11 +28,11 @@ window.fb = {
   onValue: (path, cb) => database.ref(path).on("value", cb),
 };
 
-// helper for device id
+// Device ID
 window.getDeviceId = function(){
   let id = localStorage.getItem("wc_deviceId");
   if(!id){
-    id = "dev-" + Date.now().toString(36) + "-" + Math.floor(Math.random() * 10000);
+    id = "dev-" + Date.now().toString(36) + "-" + Math.floor(Math.random()*10000);
     localStorage.setItem("wc_deviceId", id);
   }
   return id;
@@ -40,4 +40,4 @@ window.getDeviceId = function(){
 
 window.isFirebaseAvailable = () => true;
 
-console.info("Firebase v8 initialized successfully.");
+console.info("Firebase v8 initialized.");
