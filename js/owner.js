@@ -285,7 +285,9 @@ function saveOrders(orders) {
       (Array.isArray(orders) ? orders : []).forEach(o => {
         if (o && o.id) obj[o.id] = o;
       });
-      dbRef.set(obj).catch(e => console.warn('RTDB saveOrders failed', e));
+      Object.keys(obj).forEach(id => {
+        firebase.database().ref("orders/" + id).set(obj[id]);
+      });
     }
   } catch (e) {
     // ignore
