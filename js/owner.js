@@ -259,3 +259,110 @@ window.deleteOwner = deleteOwnerWrapper; // sync-friendly
 window.deleteOwnerAsync = deleteOwner;   // async version
 window.ownerLogin = ownerLogin;
 window.loadOrders = loadOrders;
+
+/* ========== ORDERS: small helpers to support owner-dashboard actions ========== */
+/* Paste this near the end of owner.js (before window.expose / exports) */
+
+/**
+ * saveOrders(orders)
+ * - orders: array
+ * Writes orders to localStorage and attempts best-effort sync to Firebase (non-blocking).
+ */
+function saveOrders(orders) {
+  try {
+    localStorage.setItem('orders', JSON.stringify(Array.isArray(orders) ? orders : []));
+  } catch (e) {
+    console.warn('saveOrders -> localStorage failed', e);
+  }
+
+  // best-effort: update RTDB if firebase available (do not throw)
+  try {
+    if (isRTDBReady() && window.firebase && firebase.database) {
+      // write under /orders/<id> for compatibility with script.js pushOrderToRemote logic
+      const dbRef = firebase.database().ref('orders');
+      // overwrite the whole orders node with an object keyed by id (safer)
+      const obj = {};
+      (Array.isArray(orders) ? orders : []).forEach(o => {
+        if (o && o.id) obj[o.id] = o;
+      });
+      dbRef.set(obj).catch(e => console.warn('RTDB saveOrders failed', e));
+    }
+  } catch (e) {
+    // ignore
+  }
+}
+
+/**
+ * updateOrderStatus(id, status)
+ * - updates an order's status in localStorage and tries to sync to Firebase.
+ * - status should be one of: 'new', 'processing', 'done' (dashboard expects these)
+ */
+function updateOrderStatus(id, status) {
+  if (!id) return false;
+  try {
+    const orders = loadOrders(); // synchronous loader from owner.js
+    const idx = orders.findIndex(o => o.id === id);
+    if (idx === -1) return false;
+
+    orders[idx].status = status;
+    // for backward compatibility keep createdAt if present
+    orders[idx].updatedAt = (new Date()).toISOString();
+
+    saveOrders(orders);
+
+    // if status finished, set a local flag so customer device can show notif (existing script.js polls orderReady_<id>)
+    if (status === 'done' || status === 'Done' || status === 'Selesai') {
+      try {
+        // local flag for client-side polling
+        localStorage.setItem('orderReady_' + id, 'yes');
+      } catch (e) {}
+      // also push a simple RTDB signal if available
+      try {
+        if (isRTDBReady() && window.firebase && firebase.database) {
+          firebase.database().ref('orderSignals/' + id).set('yes').catch(()=>{});
+        }
+      } catch(e){}
+    }
+
+    return true;
+  } catch (e) {
+    console.warn('updateOrderStatus failed', e);
+    return false;
+  }
+}
+
+/**
+ * deleteOrder(id)
+ * - Removes order from localStorage and from RTDB (if available)
+ */
+function deleteOrder(id) {
+  if (!id) return false;
+  try {
+    const orders = loadOrders();
+    const filtered = orders.filter(o => o.id !== id);
+    saveOrders(filtered);
+
+    // attempt RTDB removal (best-effort)
+    try {
+      if (isRTDBReady() && window.firebase && firebase.database) {
+        // RTDB structure used by saveOrders() was /orders/{id} => object keyed by id
+        firebase.database().ref('orders/' + id).remove().catch(()=>{});
+        // also remove signal
+        firebase.database().ref('orderSignals/' + id).remove().catch(()=>{});
+      }
+    } catch (e) {}
+
+    // cleanup local signals
+    try { localStorage.removeItem('orderReady_' + id); } catch(e){}
+
+    return true;
+  } catch (e) {
+    console.warn('deleteOrder failed', e);
+    return false;
+  }
+}
+
+/* Expose for dashboard compatibility (owner-dashboard.html expects these globals) */
+window.saveOrders = saveOrders;
+window.updateOrderStatus = updateOrderStatus;
+window.deleteOrder = deleteOrder;
