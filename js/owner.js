@@ -155,6 +155,7 @@ async function ownerLogin() {
     }
 
     // 5. Login berhasil
+    sessionStorage.setItem("ownerAuth", owner.username);
     localStorage.setItem("owner", JSON.stringify(owner));
     window.location.href = "owner-dashboard.html";
 }
