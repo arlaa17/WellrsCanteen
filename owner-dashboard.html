@@ -416,5 +416,18 @@
     window.findOrder = findOrder;
 
   </script>
+
+  <script>
+    (async function initOwnerDashboardRealtime(){
+      try {
+        if (typeof renderOwnerListUI === 'function') await renderOwnerListUI();
+        if (typeof renderOrders === 'function') renderOrders();
+        if (typeof startRealtimeOrderListener === 'function') startRealtimeOrderListener();
+      } catch (err) {
+        console.warn("Init realtime failed:", err);
+      }
+    })();
+  </script>
+
 </body>
 </html>

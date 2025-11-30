@@ -1,3 +1,9 @@
+/* script.js — Realtime-ready version
+   - Confirm order now pushes order to Firebase RTDB (best-effort)
+   - Emits orderSignals/<orderId> so owner & customers get realtime updates
+   - Keeps full backward-compatibility with localStorage fallback
+   - Removed duplicate post-click wrapper at bottom
+*/
 
 if ("Notification" in window) {
     if (Notification.permission === "default") {
@@ -513,7 +519,7 @@ document.getElementById("checkoutBtn")?.addEventListener("click", () => {
 populateOrderSummary();
 
 // confirm submit
-confirmOrderBtn.addEventListener("click", () => {
+confirmOrderBtn.addEventListener("click", async () => {
     const cart = JSON.parse(localStorage.getItem("cartItems")) || [];
     if (!cart.length) {
         alert("Keranjang kosong.");
@@ -581,6 +587,24 @@ confirmOrderBtn.addEventListener("click", () => {
     orders.unshift(order);
     localStorage.setItem("orders", JSON.stringify(orders));
     localStorage.setItem("myLastOrderId", order.id);
+
+    // BEST-EFFORT: push to Firebase RTDB if available
+    try {
+      if (isFirebaseAvailableLocal()) {
+        // push full order
+        await pushOrderToRemote(order).catch(()=>{});
+        // set a lightweight signal node to notify owner & customers
+        try {
+          await window.fb.set(`orderSignals/${order.id}`, {
+            id: order.id,
+            createdAt: order.createdAt,
+            status: order.status
+          });
+        } catch(e) { /* ignore */ }
+      }
+    } catch (e) {
+      console.warn("Failed to push order to RTDB:", e);
+    }
 
     // success UI (use etaMinutes variable)
     successMsg.textContent = `Pesanan #${order.id} diterima. Terima kasih ${name}!`;
@@ -1363,19 +1387,6 @@ if (typeof addToFavorite === "function") {
     _origAddToFavorite(name, price, img);
     persistFavoritesToRemote();
   };
-}
-// Also wrap checkout confirm to pushOrderToRemote if exists
-if (typeof confirmOrderBtn !== "undefined" && confirmOrderBtn) {
-  // add additional listener to push to remote after order created
-  confirmOrderBtn.addEventListener("click", async () => {
-    const lastOrderId = localStorage.getItem("myLastOrderId");
-    if (!lastOrderId) return;
-    const orders = JSON.parse(localStorage.getItem("orders")) || [];
-    const order = orders.find(o => o.id === lastOrderId);
-    if (order && isFirebaseAvailableLocal()) {
-      try { await pushOrderToRemote(order); } catch(e){ console.warn("pushOrderToRemote failed in click", e); }
-    }
-  });
 }
 
 /* End Firebase integration section */
