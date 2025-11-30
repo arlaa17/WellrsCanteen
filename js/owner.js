@@ -248,24 +248,6 @@ function viewOrder(o) {
 document.addEventListener("DOMContentLoaded", async () => {
   await waitForRTDB().catch(()=>{});
 
-  // AUTO-DETECT LOGIN BUTTON (tanpa id)
-  if (document.getElementById("ownerUsername")) {
-    const loginBtn =
-        document.querySelector("#btnLogin") ||
-        document.querySelector("button.loginbtn") ||
-        document.querySelector("button.button-login") ||
-        document.querySelector("button[type='submit']") ||
-        document.querySelector("button");
-
-    if (loginBtn) {
-        loginBtn.addEventListener("click", (e) => {
-            e.preventDefault();
-            ownerLogin();
-        });
-    }
-
-  }
-
   if (document.getElementById("ownerList")) {
     renderOwnerList();
     loadOrdersRealtime();
