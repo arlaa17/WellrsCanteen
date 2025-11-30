@@ -66,3 +66,8 @@ window.isFirebaseAvailable = isFirebaseAvailable;
 
 // optional: log to help debugging
 console.info("Firebase initialized. databaseURL:", firebaseConfig.databaseURL);
+
+firebase.initializeApp(firebaseConfig);
+
+// init RTDB
+const database = firebase.database();

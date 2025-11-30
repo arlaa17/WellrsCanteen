@@ -152,6 +152,13 @@
     </div>
   </div>
 
+  <!-- Firebase CDN -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+  <!-- firebase config kamu -->
+  <script src="firebase.js"></script>
+
   <!-- include owner.js (data helpers) -->
   <script src="js/owner.js"></script>
 
@@ -270,7 +277,7 @@
     };
 
     function renderOrders(){
-      const orders = loadOrders(); // from owner.js
+      const orders = loadOrders();
       const status = filterStatus.value;
       const dateVal = filterDate.value;
       const q = searchOrder.value.trim().toLowerCase();
