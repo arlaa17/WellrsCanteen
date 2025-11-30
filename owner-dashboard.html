@@ -316,39 +316,32 @@
     const ownerListNode = document.getElementById('ownerList');
     const ownerMsg = document.getElementById('ownerMsg');
 
-    function renderOwnerListUI(){
-      const owners = loadOwners();
+    async function renderOwnerListUI(){
+      const owners = await loadOwners();
       ownerListNode.innerHTML = '';
       owners.forEach(o=>{
         const div = document.createElement('div');
         div.className = 'owner-row';
+
         const name = document.createElement('div');
         name.className = 'owner-name';
         name.textContent = o.username;
+
         const actions = document.createElement('div');
 
-        // only show delete for stockwise and not for stockwise user itself
         const current = sessionStorage.getItem('ownerAuth');
         if(current === 'stockwise' && o.username !== 'stockwise'){
           const del = document.createElement('button');
           del.className = 'btn-ghost';
           del.textContent = 'Hapus';
-          del.onclick = ()=>{
-            if(!confirm(`Hapus owner "${o.username}" ?`)) return;
-            // use removeOwner from owner.js (it is named removeOwner in older versions)
-            if(typeof removeOwner === 'function'){
-              removeOwner(o.username);
-            } else if(typeof deleteOwner === 'function'){
-              deleteOwner(o.username);
-            }
+          del.onclick = async ()=>{
+            if(!confirm(`Hapus owner "${o.username}"?`)) return;
+
+            await deleteOwner(o.username);
             renderOwnerListUI();
             ownerMsg.textContent = 'Owner dihapus.';
           };
           actions.appendChild(del);
-        } else {
-          const placeholder = document.createElement('div');
-          placeholder.textContent = '';
-          actions.appendChild(placeholder);
         }
 
         div.appendChild(name);
@@ -358,7 +351,7 @@
     }
 
     // wire addOwner button -> uses addOwner(username,password) from owner.js
-    document.getElementById('addOwner').addEventListener('click', ()=>{
+    document.getElementById('addOwner').addEventListener('click', async ()=>{
       ownerMsg.textContent = '';
       const u = document.getElementById('newOwnerUsername').value.trim();
       const p = document.getElementById('newOwnerPassword').value.trim();
