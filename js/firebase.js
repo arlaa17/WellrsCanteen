@@ -2,7 +2,7 @@
 const firebaseConfig = {
     apiKey: "AIzaSyD2EXAMPLE",
     authDomain: "wellrs-canteen.firebaseapp.com",
-    databaseURL: "https://wellrs-canteen-default-rtdb.firebaseio.com",
+    databaseURL: "https://wellrs-canteen-default-rtdb.asia-southeast1.firebasedatabase.app",
     projectId: "wellrs-canteen",
     storageBucket: "wellrs-canteen.appspot.com",
     messagingSenderId: "948593453453",
