@@ -96,21 +96,25 @@ async function deleteOwner(user) {
 
 // --- LOGIN ---
 async function ownerLogin() {
-  const u = document.getElementById("ownerUsername").value.trim();
-  const p = document.getElementById("ownerPassword").value.trim();
-  const msg = document.getElementById("err");
+    const username = document.getElementById("ownerUsername").value.trim();
+    const password = document.getElementById("ownerPassword").value.trim();
 
-  const owners = await loadOwners();
-  const found = owners.find(o => o.username === u && o.password === p);
+    const snapshot = await get(ref(db, "owners"));
+    const data = snapshot.val();
 
-  if (!found) {
-    msg.style.display = "block";
-    msg.textContent = "Username atau password salah!";
-    return;
-  }
+    // Ubah ke ARRAY agar bisa pakai find()
+    const owners = data ? Object.values(data) : [];
 
-  sessionStorage.setItem("ownerAuth", u);
-  window.location.href = "owner-dashboard.html";
+    const owner = owners.find(o => o.username === username && o.password === password);
+
+    if (!owner) {
+        alert("Username / Password salah");
+        return;
+    }
+
+    // Login berhasil
+    localStorage.setItem("owner", JSON.stringify(owner));
+    window.location.href = "owner-dashboard.html";
 }
 
 // --- RENDER OWNERS LIST ---
