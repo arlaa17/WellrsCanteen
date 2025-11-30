@@ -275,23 +275,19 @@ function saveOrders(orders) {
     console.warn('saveOrders -> localStorage failed', e);
   }
 
-  // best-effort: update RTDB if firebase available (do not throw)
   try {
     if (isRTDBReady() && window.firebase && firebase.database) {
-      // write under /orders/<id> for compatibility with script.js pushOrderToRemote logic
-      const dbRef = firebase.database().ref('orders');
-      // overwrite the whole orders node with an object keyed by id (safer)
       const obj = {};
       (Array.isArray(orders) ? orders : []).forEach(o => {
         if (o && o.id) obj[o.id] = o;
       });
-      Object.keys(obj).forEach(id => {
-        firebase.database().ref("orders/" + id).set(obj[id]);
+
+      // FIX: tulis sekali, jangan loop set per id
+      firebase.database().ref("orders").set(obj).catch(e => {
+        console.warn("RTDB saveOrders failed:", e);
       });
     }
-  } catch (e) {
-    // ignore
-  }
+  } catch (e) {}
 }
 
 /**
