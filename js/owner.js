@@ -26,12 +26,12 @@ function normalizeOwners(obj) {
 
   if (typeof obj === "object") {
     return Object.keys(obj)
-      .map(k => ({
+      .map((k) => ({
         username: obj[k].username || k,
         password: obj[k].password,
-        name: obj[k].name || ""
+        name: obj[k].name || "",
       }))
-      .filter(o => o.username);
+      .filter((o) => o.username);
   }
 
   return [];
@@ -48,22 +48,30 @@ async function loadOwners() {
   }
 
   const raw = localStorage.getItem("owners");
-  if (!raw) return [{ username: "stockwise", password: "ferrari", name: "Wellrs Admin" }];
+  if (!raw)
+    return [
+      { username: "stockwise", password: "ferrari", name: "Wellrs Admin" },
+    ];
 
   try {
     return JSON.parse(raw);
   } catch {
-    return [{ username: "stockwise", password: "ferrari", name: "Wellrs Admin" }];
+    return [
+      { username: "stockwise", password: "ferrari", name: "Wellrs Admin" },
+    ];
   }
 }
 
 async function addOwner(username, password, name = "") {
   const owners = await loadOwners();
-  if (owners.some(o => o.username === username)) return false;
+  if (owners.some((o) => o.username === username)) return false;
 
   if (isRTDBReady()) {
     try {
-      await firebase.database().ref("owners").push({ username, password, name });
+      await firebase
+        .database()
+        .ref("owners")
+        .push({ username, password, name });
       return true;
     } catch {}
   }
@@ -80,41 +88,51 @@ async function deleteOwner(user) {
     try {
       const snap = await firebase.database().ref("owners").get();
       const val = snap.exists() ? snap.val() : {};
-      const key = Object.keys(val).find(k => val[k].username === user);
+      const key = Object.keys(val).find((k) => val[k].username === user);
       if (key) {
-        await firebase.database().ref("owners/" + key).remove();
+        await firebase
+          .database()
+          .ref("owners/" + key)
+          .remove();
         return true;
       }
     } catch {}
   }
 
   const owners = await loadOwners();
-  const filtered = owners.filter(o => o.username !== user);
+  const filtered = owners.filter((o) => o.username !== user);
   localStorage.setItem("owners", JSON.stringify(filtered));
   return true;
 }
 
 // --- LOGIN ---
 async function ownerLogin() {
-    const username = document.getElementById("ownerUsername").value.trim();
-    const password = document.getElementById("ownerPassword").value.trim();
+  const username = document.getElementById("ownerUsername").value.trim();
+  const password = document.getElementById("ownerPassword").value.trim();
 
-    const snapshot = await get(ref(db, "owners"));
-    const data = snapshot.val();
+  try {
+    const snap = await firebase.database().ref("owners").get();
+    const data = snap.exists() ? snap.val() : null;
 
-    // Ubah ke ARRAY agar bisa pakai find()
+    // Normalisasi agar jadi array
     const owners = data ? Object.values(data) : [];
 
-    const owner = owners.find(o => o.username === username && o.password === password);
+    const owner = owners.find(
+      (o) => o.username === username && o.password === password
+    );
 
     if (!owner) {
-        alert("Username / Password salah");
-        return;
+      alert("Username atau password salah!");
+      return;
     }
 
-    // Login berhasil
+    // Login sukses
     localStorage.setItem("owner", JSON.stringify(owner));
     window.location.href = "owner-dashboard.html";
+  } catch (err) {
+    console.error("Login error:", err);
+    alert("Terjadi kesalahan saat login.");
+  }
 }
 
 // --- RENDER OWNERS LIST ---
@@ -125,7 +143,7 @@ async function renderOwnerList() {
 
   list.innerHTML = "";
 
-  owners.forEach(o => {
+  owners.forEach((o) => {
     const row = document.createElement("div");
     row.className = "owner-row";
 
@@ -162,20 +180,26 @@ function renderOrders(data) {
 
   const keys = Object.keys(data).reverse();
 
-  keys.forEach(k => {
+  keys.forEach((k) => {
     const o = data[k];
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${k}</td>
       <td>${o.name || "-"}</td>
-      <td>${Array.isArray(o.items) ? o.items.map(i => `${i.name} × ${i.qty}`).join('<br>') : '-'}</td>
-      <td>${o.note || '-'}</td>
-      <td>${o.total ? "Rp " + o.total.toLocaleString() : '-'}</td>
-      <td>${o.createdAt ? new Date(o.createdAt).toLocaleString() : '-'}</td>
-      <td>${o.status || '-'}</td>
+      <td>${
+        Array.isArray(o.items)
+          ? o.items.map((i) => `${i.name} × ${i.qty}`).join("<br>")
+          : "-"
+      }</td>
+      <td>${o.note || "-"}</td>
+      <td>${o.total ? "Rp " + o.total.toLocaleString() : "-"}</td>
+      <td>${o.createdAt ? new Date(o.createdAt).toLocaleString() : "-"}</td>
+      <td>${o.status || "-"}</td>
       <td>
-        <button class="btn-ghost" onclick='viewOrder(${JSON.stringify(o)})'>Detail</button>
+        <button class="btn-ghost" onclick='viewOrder(${JSON.stringify(
+          o
+        )})'>Detail</button>
       </td>
     `;
 
@@ -186,10 +210,13 @@ function renderOrders(data) {
 function loadOrdersRealtime() {
   if (!isRTDBReady()) return;
 
-  firebase.database().ref("orders").on("value", snap => {
-    const val = snap.exists() ? snap.val() : {};
-    renderOrders(val);
-  });
+  firebase
+    .database()
+    .ref("orders")
+    .on("value", (snap) => {
+      const val = snap.exists() ? snap.val() : {};
+      renderOrders(val);
+    });
 }
 
 // --- VIEW ORDER ---
@@ -203,24 +230,23 @@ function viewOrder(o) {
 
 // --- PAGE INIT ---
 document.addEventListener("DOMContentLoaded", async () => {
-  await waitForRTDB().catch(()=>{});
+  await waitForRTDB().catch(() => {});
 
   // AUTO-DETECT LOGIN BUTTON (tanpa id)
   if (document.getElementById("ownerUsername")) {
     const loginBtn =
-        document.querySelector("#btnLogin") ||
-        document.querySelector("button.loginbtn") ||
-        document.querySelector("button.button-login") ||
-        document.querySelector("button[type='submit']") ||
-        document.querySelector("button");
+      document.querySelector("#btnLogin") ||
+      document.querySelector("button.loginbtn") ||
+      document.querySelector("button.button-login") ||
+      document.querySelector("button[type='submit']") ||
+      document.querySelector("button");
 
     if (loginBtn) {
-        loginBtn.addEventListener("click", (e) => {
-            e.preventDefault();
-            ownerLogin();
-        });
+      loginBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        ownerLogin();
+      });
     }
-
   }
 
   if (document.getElementById("ownerList")) {
