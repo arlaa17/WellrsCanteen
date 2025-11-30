@@ -1,10 +1,8 @@
-/* ===================================================================
-   OWNER.JS FINAL CLEAN VERSION (SINGLE FILE) — Firebase RTDB + Dashboard
-   =================================================================== */
+/* owner.js — FIXED final (compatible with existing dashboard) */
 
-// --- RTDB READY CHECK ---
+/* RTDB helpers */
 function isRTDBReady() {
-  return window.firebase && firebase.database;
+  return Boolean(window.firebase && firebase.database);
 }
 
 function waitForRTDB(timeout = 4000) {
@@ -18,246 +16,246 @@ function waitForRTDB(timeout = 4000) {
   });
 }
 
-// --- OWNERS HELPERS ---
+/* normalize any shape of owners -> array of {username,password,name} */
 function normalizeOwners(obj) {
   if (!obj) return [];
-
-  if (Array.isArray(obj)) return obj;
-
+  if (Array.isArray(obj)) return obj.filter(Boolean);
   if (typeof obj === "object") {
-    return Object.keys(obj)
-      .map(k => ({
-        username: obj[k].username || k,
-        password: obj[k].password,
-        name: obj[k].name || ""
-      }))
-      .filter(o => o.username);
+    return Object.keys(obj).map(k => {
+      const v = obj[k];
+      // if v is primitive (unlikely), treat key as username
+      if (v && typeof v === 'object') {
+        return {
+          username: v.username || k,
+          password: v.password || "",
+          name: v.name || ""
+        };
+      }
+      return { username: k, password: "", name: "" };
+    }).filter(o => o.username);
   }
-
   return [];
 }
 
+/* async load owners (prefers RTDB, falls back to localStorage, then default) */
 async function loadOwners() {
+  // try RTDB first (if available)
   if (isRTDBReady()) {
     try {
       const snap = await firebase.database().ref("owners").get();
       const val = snap.exists() ? snap.val() : null;
-      const list = normalizeOwners(val);
-      if (list.length > 0) return list;
-    } catch (e) {}
+      const arr = normalizeOwners(val);
+      if (arr.length > 0) return arr;
+    } catch (e) {
+      // ignore and fallback to localStorage
+      console.warn("RTDB read failed:", e);
+    }
   }
 
-  const raw = localStorage.getItem("owners");
-  if (!raw) return [{ username: "stockwise", password: "ferrari", name: "Wellrs Admin" }];
-
+  // fallback: localStorage
   try {
-    return JSON.parse(raw);
-  } catch {
+    const raw = localStorage.getItem("owners");
+    if (!raw) {
+      const def = [{ username: "stockwise", password: "ferrari", name: "Wellrs Admin" }];
+      return def;
+    }
+    const parsed = JSON.parse(raw);
+    return normalizeOwners(parsed);
+  } catch (e) {
+    // corrupt -> return default
     return [{ username: "stockwise", password: "ferrari", name: "Wellrs Admin" }];
   }
 }
 
-async function addOwner(username, password, name = "") {
-  const owners = await loadOwners();
-  if (owners.some(o => o.username === username)) return false;
+/* synchronous read from localStorage (used by UI that does not await) */
+function loadOwnersSync() {
+  try {
+    const raw = localStorage.getItem("owners");
+    if (!raw) return [{ username: "stockwise", password: "ferrari", name: "Wellrs Admin" }];
+    const parsed = JSON.parse(raw);
+    return normalizeOwners(parsed);
+  } catch (e) {
+    return [{ username: "stockwise", password: "ferrari", name: "Wellrs Admin" }];
+  }
+}
 
+/* write owners array to localStorage */
+function saveOwnersToLocal(ownersArray) {
+  try {
+    localStorage.setItem("owners", JSON.stringify(ownersArray));
+  } catch (e) {
+    console.warn("Failed to save owners to localStorage", e);
+  }
+}
+
+/* addOwner — returns Promise<boolean> (async) */
+async function addOwner(username, password, name = "") {
+  // use sync load for immediate duplicate check
+  const current = loadOwnersSync();
+  if (current.some(o => o.username === username)) return false;
+
+  // update local copy immediately (so UI that doesn't await sees change)
+  current.push({ username, password, name });
+  saveOwnersToLocal(current);
+
+  // if RTDB ready, push asynchronously (do not block)
   if (isRTDBReady()) {
     try {
-      await firebase.database().ref("owners").push({ username, password, name });
-      return true;
-    } catch {}
+      firebase.database().ref("owners").push({ username, password, name }).catch(e => {
+        console.warn("RTDB push failed (addOwner):", e);
+      });
+    } catch (e) {
+      console.warn("RTDB push exception:", e);
+    }
   }
 
-  owners.push({ username, password, name });
-  localStorage.setItem("owners", JSON.stringify(owners));
   return true;
 }
 
-async function deleteOwner(user) {
-  if (user === "stockwise") return false;
+/* sync-friendly wrapper (returns boolean immediately) */
+function addOwnerSync(username, password, name = "") {
+  // mirror addOwner but synchronous; returns boolean
+  const current = loadOwnersSync();
+  if (current.some(o => o.username === username)) return false;
+  current.push({ username, password, name });
+  saveOwnersToLocal(current);
 
+  // trigger async RTDB push (no await)
+  if (isRTDBReady()) {
+    try {
+      firebase.database().ref("owners").push({ username, password, name }).catch(e => {
+        console.warn("RTDB push failed (addOwnerSync):", e);
+      });
+    } catch (e) { console.warn(e); }
+  }
+  return true;
+}
+
+/* delete owner (async - returns Promise<boolean>) */
+async function deleteOwner(user) {
+  if (!user) return false;
+  if (user === "stockwise") return false; // protect default
+
+  // try RTDB removal if possible
   if (isRTDBReady()) {
     try {
       const snap = await firebase.database().ref("owners").get();
       const val = snap.exists() ? snap.val() : {};
-      const key = Object.keys(val).find(k => val[k].username === user);
+      const key = Object.keys(val || {}).find(k => (val[k] && val[k].username) === user);
       if (key) {
         await firebase.database().ref("owners/" + key).remove();
+        // also remove local copy
+        const owners = await loadOwners();
+        const filtered = owners.filter(o => o.username !== user);
+        saveOwnersToLocal(filtered);
         return true;
       }
-    } catch {}
+    } catch (e) {
+      console.warn("RTDB delete failed:", e);
+    }
   }
 
-  const owners = await loadOwners();
+  // fallback - remove from localStorage
+  const owners = loadOwnersSync();
   const filtered = owners.filter(o => o.username !== user);
-  localStorage.setItem("owners", JSON.stringify(filtered));
+  saveOwnersToLocal(filtered);
   return true;
 }
 
-// --- LOGIN ---
-async function ownerLogin() {
-    const username = document.getElementById("ownerUsername").value.trim();
-    const password = document.getElementById("ownerPassword").value.trim();
+/* sync-friendly delete (returns boolean immediately) */
+function deleteOwnerSync(user) {
+  if (!user) return false;
+  if (user === "stockwise") return false;
 
-    let owners = [];
+  // remove from localStorage immediately
+  const owners = loadOwnersSync();
+  const filtered = owners.filter(o => o.username !== user);
+  saveOwnersToLocal(filtered);
 
-    // 1. Ambil dari Firebase dulu
+  // attempt async RTDB remove if ready
+  if (isRTDBReady()) {
     try {
-        const snap = await firebase.database().ref("owners").get();
-        const data = snap.exists() ? snap.val() : null;
-
-        if (data) {
-            owners = Array.isArray(data) 
-                ? data 
-                : Object.keys(data).map(k => ({
-                        username: data[k].username || k,
-                        password: data[k].password,
-                        name: data[k].name || ""
-                  }));
+      firebase.database().ref("owners").get().then(snap => {
+        const val = snap.exists() ? snap.val() : {};
+        const key = Object.keys(val || {}).find(k => (val[k] && val[k].username) === user);
+        if (key) {
+          firebase.database().ref("owners/" + key).remove().catch(e => console.warn("RTDB remove error", e));
         }
-    } catch (err) {
-        console.error("Firebase error:", err);
-    }
-
-    // 2. Kalau Firebase kosong → ambil dari localStorage
-    if (owners.length === 0) {
-        const raw = localStorage.getItem("owners");
-
-        if (raw) {
-            try {
-                const parsed = JSON.parse(raw);
-
-                owners = Array.isArray(parsed)
-                    ? parsed
-                    : Object.keys(parsed).map(k => ({
-                          username: k,
-                          password: parsed[k].password,
-                          name: parsed[k].name || ""
-                      }));
-            } catch {
-                // corrupt → fallback
-                owners = [{ username: "stockwise", password: "ferrari", name: "Wellrs Admin" }];
-            }
-        } else {
-            // 3. Benar-benar kosong → fallback owner default
-            owners = [{ username: "stockwise", password: "ferrari", name: "Wellrs Admin" }];
-        }
-    }
-
-    // 4. Cek login
-    const owner = owners.find(o =>
-        o.username === username && o.password === password
-    );
-
-    if (!owner) {
-        alert("Username atau Password salah");
-        return;
-    }
-
-    // 5. Login berhasil
-    sessionStorage.setItem("ownerAuth", owner.username);
-    localStorage.setItem("owner", JSON.stringify(owner));
-    window.location.href = "owner-dashboard.html";
-}
-
-// --- RENDER OWNERS LIST ---
-async function renderOwnerList() {
-  const owners = await loadOwners();
-  const list = document.getElementById("ownerList");
-  if (!list) return;
-
-  list.innerHTML = "";
-
-  owners.forEach(o => {
-    const row = document.createElement("div");
-    row.className = "owner-row";
-
-    const name = document.createElement("div");
-    name.className = "owner-name";
-    name.textContent = o.username;
-
-    const act = document.createElement("div");
-
-    if (o.username !== "stockwise") {
-      const btn = document.createElement("button");
-      btn.className = "btn-ghost";
-      btn.textContent = "Hapus";
-      btn.onclick = async () => {
-        if (!confirm(`Hapus owner ${o.username}?`)) return;
-        await deleteOwner(o.username);
-        renderOwnerList();
-      };
-      act.appendChild(btn);
-    }
-
-    row.appendChild(name);
-    row.appendChild(act);
-    list.appendChild(row);
-  });
-}
-
-// --- ORDERS REALTIME ---
-function renderOrders(data) {
-  const tbody = document.querySelector("#ordersTable tbody");
-  if (!tbody) return;
-
-  tbody.innerHTML = "";
-
-  const keys = Object.keys(data).reverse();
-
-  keys.forEach(k => {
-    const o = data[k];
-
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${k}</td>
-      <td>${o.name || "-"}</td>
-      <td>${Array.isArray(o.items) ? o.items.map(i => `${i.name} × ${i.qty}`).join('<br>') : '-'}</td>
-      <td>${o.note || '-'}</td>
-      <td>${o.total ? "Rp " + o.total.toLocaleString() : '-'}</td>
-      <td>${o.createdAt ? new Date(o.createdAt).toLocaleString() : '-'}</td>
-      <td>${o.status || '-'}</td>
-      <td>
-        <button class="btn-ghost" onclick='viewOrder(${JSON.stringify(o)})'>Detail</button>
-      </td>
-    `;
-
-    tbody.appendChild(tr);
-  });
-}
-
-function loadOrdersRealtime() {
-  if (!isRTDBReady()) return;
-
-  firebase.database().ref("orders").on("value", snap => {
-    const val = snap.exists() ? snap.val() : {};
-    renderOrders(val);
-  });
-}
-
-// --- VIEW ORDER ---
-function viewOrder(o) {
-  const overlay = document.getElementById("orderOverlay");
-  if (!overlay) return alert(JSON.stringify(o, null, 2));
-
-  overlay.style.display = "block";
-  overlay.querySelector("pre").textContent = JSON.stringify(o, null, 2);
-}
-
-// --- PAGE INIT ---
-document.addEventListener("DOMContentLoaded", async () => {
-  await waitForRTDB().catch(()=>{});
-
-  if (document.getElementById("ownerList")) {
-    renderOwnerList();
-    loadOrdersRealtime();
+      }).catch(e => console.warn("RTDB read for delete failed", e));
+    } catch (e) { console.warn(e); }
   }
-});
 
-// expose
+  return true;
+}
+
+/* ownerLogin (async) - uses RTDB then localStorage */
+async function ownerLogin() {
+  const username = (document.getElementById("ownerUsername") || {}).value || "";
+  const password = (document.getElementById("ownerPassword") || {}).value || "";
+  const utrim = username.trim();
+  const ptrim = password.trim();
+
+  // try RTDB first
+  let owners = [];
+  if (isRTDBReady()) {
+    try {
+      const snap = await firebase.database().ref("owners").get();
+      const data = snap.exists() ? snap.val() : null;
+      owners = normalizeOwners(data);
+    } catch (e) {
+      console.warn("RTDB read failed (login):", e);
+    }
+  }
+
+  // fallback to localStorage if empty
+  if (!owners || owners.length === 0) {
+    owners = loadOwnersSync();
+  }
+
+  const owner = owners.find(o => (o.username || "") === utrim && (o.password || "") === ptrim);
+  if (!owner) {
+    alert("Username atau Password salah");
+    return;
+  }
+
+  sessionStorage.setItem("ownerAuth", owner.username);
+  localStorage.setItem("owner", JSON.stringify(owner));
+  // redirect
+  window.location.href = "owner-dashboard.html";
+}
+
+/* ---------- Convenience wrappers for UI that called old names ---------- */
+/* Provide addOwner (sync-friendly) because dashboard sometimes calls without await */
+function addOwnerWrapper(u, p, name) {
+  return addOwnerSync(u, p, name || u);
+}
+
+/* Provide deleteOwnerWrapper for compatibility */
+function deleteOwnerWrapper(u) {
+  return deleteOwnerSync(u);
+}
+
+/* Orders helpers (kept minimal — assuming other code provides loadOrders/updateOrderStatus etc.) */
+/* If your app expects loadOrders() to be synchronous array, provide a safe helper */
+function loadOrders() {
+  try {
+    const raw = localStorage.getItem("orders");
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+/* expose API */
+window.isRTDBReady = isRTDBReady;
+window.waitForRTDB = waitForRTDB;
+window.loadOwners = loadOwners;          // async
+window.loadOwnersSync = loadOwnersSync;  // sync
+window.addOwner = addOwnerWrapper;       // sync-friendly (returns boolean)
+window.addOwnerAsync = addOwner;         // async version (returns Promise<boolean>)
+window.deleteOwner = deleteOwnerWrapper; // sync-friendly
+window.deleteOwnerAsync = deleteOwner;   // async version
 window.ownerLogin = ownerLogin;
-window.addOwner = addOwner;
-window.deleteOwner = deleteOwner;
-window.renderOwnerList = renderOwnerList;
-window.loadOrdersRealtime = loadOrdersRealtime;
-window.viewOrder = viewOrder;
+window.loadOrders = loadOrders;
