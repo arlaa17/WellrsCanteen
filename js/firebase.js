@@ -1,41 +1,47 @@
-// firebase.js (Fixed Final)
+// js/firebase.js  (safe init + small helper API)
+// uses Firebase v8 (already loaded via CDN in your HTML)
+
 const firebaseConfig = {
-    apiKey: "AIzaSyD2EXAMPLE",
-    authDomain: "wellrs-canteen.firebaseapp.com",
-    databaseURL: "https://wellrs-canteen-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "wellrs-canteen",
-    storageBucket: "wellrs-canteen.appspot.com",
-    messagingSenderId: "948593453453",
-    appId: "1:948593453453:web:example"
+  apiKey: "AIzaSyD2EXAMPLE",
+  authDomain: "wellrs-canteen.firebaseapp.com",
+  databaseURL: "https://wellrs-canteen-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "wellrs-canteen",
+  storageBucket: "wellrs-canteen.appspot.com",
+  messagingSenderId: "948593453453",
+  appId: "1:948593453453:web:example"
 };
 
-firebase.initializeApp(firebaseConfig);
+// init only once (prevents "already defined" errors)
+if (!window.firebase || !firebase.apps || firebase.apps.length === 0) {
+  firebase.initializeApp(firebaseConfig);
+} else {
+  console.warn("Firebase app already initialized.");
+}
+
 const rtdb = firebase.database();
 
-let rtdbReady = false;
+// helper small API to avoid calling firebase.* all over
+window.fb = {
+  ref(path = "") { return firebase.database().ref(path); },
+  async get(path) {
+    const snap = await firebase.database().ref(path).get();
+    return snap;
+  },
+  async set(path, value) {
+    return firebase.database().ref(path).set(value);
+  },
+  async push(path, value) {
+    return firebase.database().ref(path).push(value);
+  },
+  onValue(path, cb) {
+    return firebase.database().ref(path).on("value", cb);
+  },
+  off(path, cb) {
+    return firebase.database().ref(path).off("value", cb);
+  },
+  remove(path) {
+    return firebase.database().ref(path).remove();
+  }
+};
 
-/** Menunggu RTDB benar-benar siap (Firebase kadang delay di GitHub pages) */
-function waitForRTDB(maxWait = 5000) {
-  return new Promise((resolve, reject) => {
-    const t0 = Date.now();
-    const interval = setInterval(() => {
-      if (firebase.apps.length > 0 && firebase.database) {
-        clearInterval(interval);
-        rtdbReady = true;
-        resolve(true);
-      } else if (Date.now() - t0 > maxWait) {
-        clearInterval(interval);
-        reject(false);
-      }
-    }, 100);
-  });
-}
-
-function getRTDB() {
-  if (!rtdbReady) console.warn("RTDB not ready yet");
-  return rtdb;
-}
-
-window.waitForRTDB = waitForRTDB;
-window.getRTDB = getRTDB;
-window.rtdb = rtdb;
+window.getRTDB = () => rtdb;
